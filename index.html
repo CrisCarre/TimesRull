@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planificación Hotel</title>
+
+  <!-- Librerías externas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div id="root"><div class="loading">Cargando…</div></div>
+<div id="toast-root"></div>
+
+<!--
+  NOTA: todos los módulos JS se cargan como un único script de módulo ES.
+  El orden importa: config → helpers → render → vistas → export.
+  Se usa un único <script type="module"> que importa el punto de entrada (main.js)
+  para evitar problemas de scope entre módulos.
+-->
+<script type="module" src="./js/main.js"></script>
+
+</body>
+</html>
