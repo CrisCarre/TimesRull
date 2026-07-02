@@ -238,7 +238,7 @@ async function cargarTodo() {
     state.outletEmpleados = oeRes.data;
 
     procesarTurnos();
-    document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#0f766e');
+    document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#146385');
     document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
 
     if (!state.cursorMes) { const h = new Date(); state.cursorMes = new Date(h.getFullYear(), h.getMonth(), 1); }
@@ -464,7 +464,7 @@ function render() {
   const deptButtons = hasOutlets && state.ctxOutletId ? DEPTS.map(d => {
     const isActive = state.ctxDept === d;
     const cls = isActive ? `dept-badge active-${DEPT_CLASS[d]}` : `dept-badge ${DEPT_CLASS[d]}`;
-    return `<button class="${cls}" data-dept="${d}">${d} <span style="font-size:10px;font-weight:400">${DEPT_LABELS[d]}</span></button>`;
+    return `<button class="${cls}" data-dept="${d}">${d}</button>`;
   }).join('') + `<button class="${state.ctxDept === 'ALL' ? 'dept-badge active-all' : 'dept-badge all'}" data-dept="ALL">Ambos</button>` : '';
 
   const empCount = empleadosEnContexto().length;

@@ -39,10 +39,10 @@
   --shadow: 0 1px 3px rgba(18, 44, 48, 0.08);
 
   /* DEPARTAMENTOS */
-  --foh-bg: #dbeafe;
-  --foh-text: #1d4ed8;
-  --boh-bg: #fce7f3;
-  --boh-text: #9d174d;
+  --foh-bg: #d4eaf5;
+  --foh-text: #146385;
+  --boh-bg: #fdf3d8;
+  --boh-text: #8a5c00;
 }
 
 * {
@@ -2218,7 +2218,7 @@ main {
 }
 
 .toast.success {
-  background: var(--color-primario);
+  background: #1a6b3a;
 }
 
 @keyframes slideIn {
@@ -2380,9 +2380,10 @@ main {
 }
 
 .ctx-select {
-  background: rgba(255,255,255,0.12) !important;
-  color: white !important;
-  border-color: rgba(255,255,255,0.2) !important;
+  background: rgba(255,255,255,0.95) !important;
+  color: var(--p1) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+  font-weight: 500;
 }
 
 .btn-pri {
