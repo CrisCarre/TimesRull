@@ -238,7 +238,7 @@ async function cargarTodo() {
     state.outletEmpleados = oeRes.data;
 
     procesarTurnos();
-    document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#146385');
+    document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#0f766e');
     document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
 
     if (!state.cursorMes) { const h = new Date(); state.cursorMes = new Date(h.getFullYear(), h.getMonth(), 1); }
@@ -464,7 +464,7 @@ function render() {
   const deptButtons = hasOutlets && state.ctxOutletId ? DEPTS.map(d => {
     const isActive = state.ctxDept === d;
     const cls = isActive ? `dept-badge active-${DEPT_CLASS[d]}` : `dept-badge ${DEPT_CLASS[d]}`;
-    return `<button class="${cls}" data-dept="${d}">${d}</button>`;
+    return `<button class="${cls}" data-dept="${d}">${d} <span style="font-size:10px;font-weight:400">${DEPT_LABELS[d]}</span></button>`;
   }).join('') + `<button class="${state.ctxDept === 'ALL' ? 'dept-badge active-all' : 'dept-badge all'}" data-dept="ALL">Ambos</button>` : '';
 
   const empCount = empleadosEnContexto().length;
@@ -615,7 +615,7 @@ function renderDisponibilidadEmpleado() {
           ${misDisp.map(d => `
             <div class="card" style="padding:14px">
               <div style="font-weight:600;margin-bottom:4px">${tipoDispLabel(d.tipo)}</div>
-              <div style="font-size:13px;color:var(--muted)">${d.fecha_inicio} → ${d.fecha_fin}</div>
+              <div style="font-size:13px;color:var(--muted)">${d.fecha_inicio ? d.fecha_inicio.split('T')[0] : ''} → ${d.fecha_fin ? d.fecha_fin.split('T')[0] : ''}</div>
               ${d.nota ? `<div style="font-size:12px;margin-top:6px;color:var(--muted)">${escapeHtml(d.nota)}</div>` : ''}
               <button class="btn-del" data-id="${d.id}" style="margin-top:10px;font-size:11px">Eliminar</button>
             </div>
@@ -945,8 +945,8 @@ function renderModalDia(fecha, draft) {
       <thead><tr><th>Empleado</th><th>Turno</th><th>Entrada → Salida</th><th>€/h</th><th class="t-right">Coste</th><th></th></tr></thead>
       <tbody>`;
     if (mostrarPorDept) {
-      if (filasPorDept.FOH.length > 0) tablaHTML += `<tr class="tabla-emp-group-header"><td colspan="6"><span class="dept-badge foh" style="font-size:11px;padding:2px 8px">FOH</span> Front of House</td></tr>` + filasPorDept.FOH.join('');
-      if (filasPorDept.BOH.length > 0) tablaHTML += `<tr class="tabla-emp-group-header"><td colspan="6"><span class="dept-badge boh" style="font-size:11px;padding:2px 8px">BOH</span> Back of House</td></tr>` + filasPorDept.BOH.join('');
+      if (filasPorDept.FOH.length > 0) tablaHTML += `<tr class="tabla-emp-group-header"><td colspan="6"><span class="dept-badge foh" style="font-size:11px;padding:2px 8px">FOH</span></td></tr>` + filasPorDept.FOH.join('');
+      if (filasPorDept.BOH.length > 0) tablaHTML += `<tr class="tabla-emp-group-header"><td colspan="6"><span class="dept-badge boh" style="font-size:11px;padding:2px 8px">BOH</span></td></tr>` + filasPorDept.BOH.join('');
     } else {
       tablaHTML += [...filasPorDept.FOH, ...filasPorDept.BOH, ...filasPorDept.SIN].join('');
     }
@@ -1234,7 +1234,7 @@ function renderSemana(soloLectura = false) {
   document.getElementById('btn-pdf-sem').addEventListener('click', exportarPDFSemana);
 
   document.querySelectorAll('.cell-sem').forEach(td => {
-    td.addEventListener('click', () => abrirModalCelda(td.dataset.fecha, parseInt(td.dataset.emp)));
+    td.addEventListener('click', () => abrirModalCelda(td.dataset.fecha, parseInt(td.dataset.emp, 10)));
   });
 }
 
@@ -1310,6 +1310,7 @@ function abrirModalCelda(fecha, empId) {
 }
 
 async function guardarCelda(fecha, empId) {
+  const id = parseInt(empId, 10);
   const turno = document.getElementById('cell-turno').value;
   const horaIni = document.getElementById('cell-hora-ini').value;
   const horaFin = document.getElementById('cell-hora-fin').value;
@@ -1317,12 +1318,12 @@ async function guardarCelda(fecha, empId) {
   if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
   const payload = { turno, horas, hora_inicio: horaIni || null, hora_fin: horaFin || null };
   try {
-    const existente = state.planificacion.find(a => a.fecha === fecha && a.empleado_id === empId);
+    const existente = state.planificacion.find(a => a.fecha === fecha && a.empleado_id === id);
     if (existente) {
       const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
       if (error) throw error; Object.assign(existente, payload);
     } else {
-      const { data, error } = await supabase.from('planificacion').insert([{ fecha, empleado_id: empId, ...payload }]).select().single();
+      const { data, error } = await supabase.from('planificacion').insert([{ fecha, empleado_id: id, ...payload }]).select().single();
       if (error) throw error; state.planificacion.push({ ...data, horas: parseFloat(data.horas) });
     }
     cerrarModal(); render(); toast('Guardado', 'success');

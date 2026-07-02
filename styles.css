@@ -1715,7 +1715,7 @@ main {
   height: 26px;
   flex-shrink: 0;
   border: none;
-  background: var(--color-primario);
+  background: var(--p2);
   color: white;
   border-radius: 50%;
   font-size: 18px;
