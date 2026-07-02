@@ -128,6 +128,14 @@ const turnoHoras = {};
 const turnosOrden = [];
 
 const DEPTS = ['FOH', 'BOH'];
+
+function fmtFecha(f) {
+  if (!f) return '';
+  const s = String(f).slice(0, 10); // YYYY-MM-DD
+  const [y, m, d] = s.split('-');
+  return `${d}-${m}-${y.slice(2)}`;
+}
+
 const DEPT_LABELS = { FOH: 'Front of House', BOH: 'Back of House', ALL: 'Todos los departamentos' };
 const DEPT_CLASS = { FOH: 'foh', BOH: 'boh', ALL: 'all' };
 const OUTLET_ICONS = ['🏨', '🍽️', '🍹', '🏊', '🧖', '🎭', '🎰', '🏋️', '☕', '🛍️'];
@@ -615,7 +623,7 @@ function renderDisponibilidadEmpleado() {
           ${misDisp.map(d => `
             <div class="card" style="padding:14px">
               <div style="font-weight:600;margin-bottom:4px">${tipoDispLabel(d.tipo)}</div>
-              <div style="font-size:13px;color:var(--muted)">${String(d.fecha_inicio).slice(0,10)} → ${String(d.fecha_fin).slice(0,10)}</div>
+              <div style="font-size:13px;color:var(--muted)">${fmtFecha(d.fecha_inicio)} → ${fmtFecha(d.fecha_fin)}</div>
               ${d.nota ? `<div style="font-size:12px;margin-top:6px;color:var(--muted)">${escapeHtml(d.nota)}</div>` : ''}
               <button class="btn-del" data-id="${d.id}" style="margin-top:10px;font-size:11px">Eliminar</button>
             </div>
@@ -1290,7 +1298,7 @@ function abrirModalCelda(fecha, empId) {
         <button class="modal-x" id="modal-cerrar">×</button>
       </div>
       <div class="modal-body form-grid">
-        ${noDisp ? `<div class="aviso-line aviso-rojo">⚠ ${tipoDispLabel(noDisp.tipo)}: ${noDisp.fecha_inicio} → ${noDisp.fecha_fin}</div>` : ''}
+        ${noDisp ? `<div class="aviso-line aviso-rojo">⚠ ${tipoDispLabel(noDisp.tipo)}: ${fmtFecha(noDisp.fecha_inicio)} → ${fmtFecha(noDisp.fecha_fin)}</div>` : ''}
         <label>Turno
           <select id="cell-turno">
             ${turnosOrden.filter(t => emp.turnos_permitidos.split('|').includes(t))
@@ -1739,7 +1747,7 @@ function renderDisponibilidad() {
         : periodos.map(d => `
                 <div class="disp-pill-row">
                   <span class="disp-tipo" style="background:${tipoDispColor(d.tipo)};font-size:9px;padding:1px 6px">${tipoDispLabel(d.tipo)}</span>
-                  <span class="disp-rango" style="font-size:11px">${d.fecha_inicio.slice(5)} → ${d.fecha_fin.slice(5)}</span>
+                  <span class="disp-rango" style="font-size:11px">${fmtFecha(d.fecha_inicio)} → ${fmtFecha(d.fecha_fin)}</span>
                   ${d.nota ? `<span class="disp-nota" style="font-size:10px">${escapeHtml(d.nota)}</span>` : ''}
                   <button class="disp-del-btn" data-del-disp="${d.id}" title="Eliminar">×</button>
                 </div>`).join('')

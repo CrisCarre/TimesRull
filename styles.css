@@ -1711,11 +1711,11 @@ main {
 }
 
 .disp-add-btn {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border: none;
-  background: var(--color-primario);
+  background: var(--p2);
   color: white;
   border-radius: 50%;
   font-size: 18px;
@@ -2438,4 +2438,9 @@ main {
 .overview-card-shop svg {
   width: 100%;
   height: 100%;
+}
+
+/* ============ FIX BOTÓN + DISPONIBILIDAD ============ */
+.disp-add-btn {
+  background: #146385 !important;
 }
