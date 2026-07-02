@@ -2226,7 +2226,9 @@ function renderConfigAplicacion(container) {
 }
 
 /* =====================================================================
-   EXPORTACIÓNmbreArchivo(prefijo, sufijoFecha) {
+   EXPORTACIÓN
+   ===================================================================== */
+function nombreArchivo(prefijo, sufijoFecha) {
   const hotel = (state.config.NOMBRE_HOTEL || 'hotel').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outlet = ctxOutlet();
   const outletSlug = outlet ? `_${outlet.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : '';
