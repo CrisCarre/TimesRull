@@ -68,7 +68,7 @@ const supabase = {
         then: (fn) => apiCall({ action: 'insert', table, data: rows[0] }).then(r => fn({ data: [r.data], error: null })).catch(e => fn({ data: null, error: e })),
       }),
       then: (fn) => {
-        const payload = Array.isArray(rows) && rows.length > 1 ? rows : rows[0];
+        const payload = Array.isArray(rows) ? rows : [rows[0]];
         return apiCall({ action: 'insert', table, data: payload }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e }));
       },
     }),
@@ -1793,7 +1793,7 @@ function renderPlantillas() {
     <div class="seccion-header"><h2>Plantillas de día</h2></div>
 
     ${state.plantillas.length === 0
-      ? `<div class="empty-state">Sin plantillas. Ve a un día con asignaciones y pulsa "Guardar como plantilla".</div>`
+      ? `<div class="empty-state">Sin plantillas</div>`
       : `<div class="plantillas-grid">
           ${state.plantillas.map(p => {
         const asigs = p.asignaciones || [];

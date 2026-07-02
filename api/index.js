@@ -13,6 +13,7 @@ module.exports = async (req, res) => {
     res.end();
     return;
   }
+
   Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
 
   const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -54,20 +55,20 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // INSERT (simple o múltiple)
+    // INSERT — soporta array de filas o una sola fila
     if (action === 'insert') {
       const rows = Array.isArray(data) ? data : [data];
-      const results = [];
+      const inserted = [];
       for (const row of rows) {
         const keys = Object.keys(row);
         const vals = Object.values(row);
         const placeholders = keys.map((_, i) => `$${i+1}`);
         const query = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const result = await client.query(query, vals);
-        results.push(result.rows[0]);
+        inserted.push(result.rows[0]);
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: results.length === 1 ? results[0] : results }));
+      res.end(JSON.stringify({ data: inserted.length === 1 ? inserted[0] : inserted }));
       return;
     }
 
@@ -85,10 +86,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // DELETE — por id o por where arbitrario
+    // DELETE — por id o por where
     if (action === 'delete') {
       let query, values;
       if (where) {
+        // Delete por where (ej: fecha='2026-07-17')
         const conditions = Object.entries(where).map(([k, v], i) => `${k}=$${i+1}`);
         query = `DELETE FROM ${table} WHERE ${conditions.join(' AND ')}`;
         values = Object.values(where);
@@ -96,7 +98,10 @@ module.exports = async (req, res) => {
         query = `DELETE FROM ${table} WHERE id=$1`;
         values = [data.id];
       } else {
-        throw new Error('delete requiere id o where');
+        // Delete por campos de data
+        const conditions = Object.entries(data).map(([k, v], i) => `${k}=$${i+1}`);
+        query = `DELETE FROM ${table} WHERE ${conditions.join(' AND ')}`;
+        values = Object.values(data);
       }
       await client.query(query, values);
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -104,11 +109,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // UPSERT (config)
+    // UPSERT — para config
     if (action === 'upsert') {
-      const items = Array.isArray(data) ? data : [data];
-      for (const item of items) {
-        const { clave, valor, comentario } = item;
+      const rows = Array.isArray(data) ? data : [data];
+      for (const row of rows) {
+        const { clave, valor, comentario } = row;
         await client.query(
           `INSERT INTO config (clave, valor, comentario) VALUES ($1, $2, $3) ON CONFLICT (clave) DO UPDATE SET valor=$2, comentario=$3`,
           [clave, valor, comentario || null]
