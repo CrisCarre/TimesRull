@@ -1786,8 +1786,8 @@ function abrirModalDisponibilidad(empsVis, preselEmpId = null) {
 /* =====================================================================
    VISTA PLANTILLAS
    ===================================================================== */
-function renderPlantillas() {
-  const main = document.getElementById('main');
+function renderPlantillas(container) {
+  const main = container || document.getElementById('main');
   const empById = {}; state.empleados.forEach(e => empById[e.id] = e);
   main.innerHTML = `
     <div class="seccion-header"><h2>Plantillas de día</h2></div>
@@ -1850,8 +1850,8 @@ function renderPlantillas() {
 /* =====================================================================
    VISTA REGLAS
    ===================================================================== */
-function renderReglas() {
-  const main = document.getElementById('main');
+function renderReglas(container) {
+  const main = container || document.getElementById('main');
   const dowNames = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   const dowFull = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const puestosUnicos = [...new Set(state.empleados.map(e => e.puesto).filter(Boolean))].sort();
@@ -1950,8 +1950,8 @@ function renderReglas() {
 /* =====================================================================
    VISTA OUTLETS (gestión de locales)
    ===================================================================== */
-function renderOutlets() {
-  const main = document.getElementById('main');
+function renderOutlets(container) {
+  const main = container || document.getElementById('main');
   main.innerHTML = `
     <div class="seccion-header">
       <h2>Gestión de locales (Outlets)</h2>
@@ -2151,31 +2151,35 @@ function abrirModalOutlet(outlet) {
 function renderConfig() {
   const subview = state.configSubview || 'aplicacion';
   const tabs = [
-    { id: 'aplicacion', label: '⚙️ Aplicación' },
-    { id: 'locales', label: '🏪 Locales' },
-    { id: 'plantillas', label: '📋 Plantillas' },
-    { id: 'reglas', label: '📏 Reglas' },
+    { id: 'aplicacion', label: 'Aplicación', icon: '⚙️' },
+    { id: 'locales', label: 'Locales', icon: '🏪' },
+    { id: 'plantillas', label: 'Plantillas', icon: '📋' },
+    { id: 'reglas', label: 'Reglas', icon: '📏' },
   ];
 
   const main = document.getElementById('main');
   main.innerHTML = `
     <div style="padding:0">
-      <div class="config-tabs-wrap">
-        ${tabs.map(t => `<button class="config-tab${subview===t.id?' active':''}" data-subtab="${t.id}">${t.label}</button>`).join('')}
+      <div class="config-subtabs">
+        ${tabs.map(t => `
+          <button class="config-subtab${subview===t.id?' active':''}" data-subtab="${t.id}">
+            <span class="config-subtab-icon">${t.icon}</span>
+            <span class="config-subtab-label">${t.label}</span>
+          </button>`).join('')}
       </div>
-      <div id="config-content" style="padding:20px 24px"></div>
+      <div id="config-content"></div>
     </div>`;
 
-  document.querySelectorAll('.config-tab').forEach(b => {
+  document.querySelectorAll('.config-subtab').forEach(b => {
     b.addEventListener('click', () => { state.configSubview = b.dataset.subtab; renderConfig(); });
   });
 
   const content2 = document.getElementById('config-content');
 
   if (subview === 'aplicacion') renderConfigAplicacion(content2);
-  else if (subview === 'locales') renderOutlets();
-  else if (subview === 'plantillas') renderPlantillas();
-  else if (subview === 'reglas') renderReglas();
+  else if (subview === 'locales') { content2.innerHTML = ''; renderOutlets(content2); }
+  else if (subview === 'plantillas') { content2.innerHTML = ''; renderPlantillas(content2); }
+  else if (subview === 'reglas') { content2.innerHTML = ''; renderReglas(content2); }
 }
 
 function renderConfigAplicacion(container) {
