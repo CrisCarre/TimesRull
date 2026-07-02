@@ -67,7 +67,10 @@ const supabase = {
         single: () => apiCall({ action: 'insert', table, data: rows[0] }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
         then: (fn) => apiCall({ action: 'insert', table, data: rows[0] }).then(r => fn({ data: [r.data], error: null })).catch(e => fn({ data: null, error: e })),
       }),
-      then: (fn) => apiCall({ action: 'insert', table, data: rows[0] }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
+      then: (fn) => {
+        const payload = Array.isArray(rows) && rows.length > 1 ? rows : rows[0];
+        return apiCall({ action: 'insert', table, data: payload }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e }));
+      },
     }),
     update: (data) => ({
       eq: (col, val) => ({
@@ -79,7 +82,7 @@ const supabase = {
     }),
     delete: () => ({
       eq: (col, val) => ({
-        then: (fn) => apiCall({ action: 'delete', table, data: { id: val } }).then(r => fn({ error: null })).catch(e => fn({ error: e })),
+        then: (fn) => apiCall({ action: 'delete', table, where: { [col]: val } }).then(r => fn({ error: null })).catch(e => fn({ error: e })),
       }),
     }),
     upsert: (rows, opts) => ({
@@ -500,9 +503,6 @@ function render() {
         ` : ''}
         <button data-view="empleados" class="${state.view === 'empleados' ? 'active' : ''}">Empleados</button>
         <button data-view="disponibilidad" class="${state.view === 'disponibilidad' ? 'active' : ''}">Disponibilidad</button>
-        <button data-view="plantillas" class="${state.view === 'plantillas' ? 'active' : ''}">Plantillas</button>
-        <button data-view="reglas" class="${state.view === 'reglas' ? 'active' : ''}">Reglas</button>
-        <button data-view="outlets" class="${state.view === 'outlets' ? 'active' : ''}">Locales</button>
         <button data-view="config" class="${state.view === 'config' ? 'active' : ''}">Config</button>
       </nav>
       <button class="logout" id="btn-logout">Salir</button>
@@ -1059,6 +1059,7 @@ function cerrarModal() { document.getElementById('modal-root').innerHTML = ''; }
 
 async function guardarDia(fecha, draft) {
   try {
+    // Borrar planificacion del dia por fecha (where)
     const { error: delErr } = await supabase.from('planificacion').delete().eq('fecha', fecha);
     if (delErr) throw delErr;
     if (draft.length > 0) {
@@ -1790,7 +1791,7 @@ function renderPlantillas() {
   const empById = {}; state.empleados.forEach(e => empById[e.id] = e);
   main.innerHTML = `
     <div class="seccion-header"><h2>Plantillas de día</h2></div>
-    <p class="muted-small" style="margin-bottom:16px">Creadas desde el modal de un día. Haz clic en una para aplicarla.</p>
+
     ${state.plantillas.length === 0
       ? `<div class="empty-state">Sin plantillas. Ve a un día con asignaciones y pulsa "Guardar como plantilla".</div>`
       : `<div class="plantillas-grid">
@@ -2148,7 +2149,37 @@ function abrirModalOutlet(outlet) {
    VISTA CONFIGURACIÓN
    ===================================================================== */
 function renderConfig() {
+  const subview = state.configSubview || 'aplicacion';
+  const tabs = [
+    { id: 'aplicacion', label: '⚙️ Aplicación' },
+    { id: 'locales', label: '🏪 Locales' },
+    { id: 'plantillas', label: '📋 Plantillas' },
+    { id: 'reglas', label: '📏 Reglas' },
+  ];
+
   const main = document.getElementById('main');
+  main.innerHTML = `
+    <div style="padding:0">
+      <div class="config-tabs-wrap">
+        ${tabs.map(t => `<button class="config-tab${subview===t.id?' active':''}" data-subtab="${t.id}">${t.label}</button>`).join('')}
+      </div>
+      <div id="config-content" style="padding:20px 24px"></div>
+    </div>`;
+
+  document.querySelectorAll('.config-tab').forEach(b => {
+    b.addEventListener('click', () => { state.configSubview = b.dataset.subtab; renderConfig(); });
+  });
+
+  const content2 = document.getElementById('config-content');
+
+  if (subview === 'aplicacion') renderConfigAplicacion(content2);
+  else if (subview === 'locales') renderOutlets();
+  else if (subview === 'plantillas') renderPlantillas();
+  else if (subview === 'reglas') renderReglas();
+}
+
+function renderConfigAplicacion(container) {
+  const main = container || document.getElementById('main');
   const grupos = [
     ['Hotel', ['NOMBRE_HOTEL', 'DIVISA']],
     ['Turnos', ['TURNOS', 'TURNO_M_NOMBRE', 'TURNO_M_HORAS', 'TURNO_M_COLOR', 'TURNO_T_NOMBRE', 'TURNO_T_HORAS', 'TURNO_T_COLOR', 'TURNO_N_NOMBRE', 'TURNO_N_HORAS', 'TURNO_N_COLOR']],
@@ -2158,13 +2189,11 @@ function renderConfig() {
     ['Apariencia', ['COLOR_PRIMARIO', 'COLOR_ALERTA']],
   ];
   const incluidas = new Set(grupos.flatMap(g => g[1]));
-  // Exclude auto-generated outlet budget keys
   const otras = Object.keys(state.config).filter(k => !incluidas.has(k) && !k.startsWith('PRESUPUESTO_'));
   if (otras.length) grupos.push(['Otros', otras]);
 
   main.innerHTML = `
-    <div class="seccion-header"><h2>Configuración global</h2></div>
-    <p class="info">Los presupuestos por local se configuran en la sección <strong>Locales</strong>. Aquí solo el presupuesto global (fallback si no hay local seleccionado).</p>
+    <div class="seccion-header"><h2>Configuración de aplicación</h2></div>
     ${grupos.map(([titulo, claves]) => `
       <h3 style="margin-top:20px">${titulo}</h3>
       <table class="tabla-config">
@@ -2189,7 +2218,7 @@ function renderConfig() {
       if (error) throw error;
       cambios.forEach(c => state.config[c.clave] = c.valor);
       procesarTurnos();
-      document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#0f766e');
+      document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#146385');
       document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
       render(); toast(`${cambios.length} cambio(s) guardado(s)`, 'success');
     } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -2197,9 +2226,7 @@ function renderConfig() {
 }
 
 /* =====================================================================
-   EXPORTACIÓN
-   ===================================================================== */
-function nombreArchivo(prefijo, sufijoFecha) {
+   EXPORTACIÓNmbreArchivo(prefijo, sufijoFecha) {
   const hotel = (state.config.NOMBRE_HOTEL || 'hotel').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outlet = ctxOutlet();
   const outletSlug = outlet ? `_${outlet.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : '';

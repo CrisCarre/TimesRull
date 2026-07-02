@@ -1,17 +1,21 @@
 :root {
-  --color-primario: #0f766e;
+  --color-primario: #146385;
+  --color-primario-dark: #122c30;
+  --color-acento: #e39915;
+  --color-acento-light: #eccc5b;
+  --color-acento-pale: #f6eda5;
   --color-alerta: #dc2626;
-  --color-warn: #d97706;
-  --bg: #f5f6f8;
+  --color-warn: #e39915;
+  --bg: #f0f4f6;
   --card: #ffffff;
-  --border: #e5e7eb;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --border: #d1dde3;
+  --text: #122c30;
+  --muted: #4a6572;
+  --shadow: 0 1px 4px rgba(18, 44, 48, 0.08);
   --foh-bg: #dbeafe;
   --foh-text: #1d4ed8;
-  --boh-bg: #fce7f3;
-  --boh-text: #9d174d;
+  --boh-bg: #fef3c7;
+  --boh-text: #92400e;
 }
 
 * {
@@ -2252,30 +2256,34 @@ main {
     display: none;
   }
 }
-/* ============ LOGIN ERROR & SHAKE ============ */
-.login-error-msg {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #dc2626;
-  border-radius: 8px;
-  padding: 10px 14px;
+/* ============ CONFIG SUBTABS ============ */
+.config-tabs-wrap {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  background: var(--card);
+  padding: 0 24px;
+}
+
+.config-tab {
+  padding: 14px 20px;
+  border: none;
+  background: none;
   font-size: 13px;
   font-weight: 500;
-  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-8px); }
-  40% { transform: translateX(8px); }
-  60% { transform: translateX(-6px); }
-  80% { transform: translateX(6px); }
+.config-tab:hover {
+  color: var(--color-primario);
 }
 
-.login-card.shake {
-  animation: shake 0.4s ease;
-}
-
-#login-screen {
-  background: linear-gradient(135deg, #b5451b 0%, #7c2d12 40%, #134e4a 100%) !important;
+.config-tab.active {
+  color: var(--color-primario);
+  border-bottom-color: var(--color-primario);
+  font-weight: 600;
 }

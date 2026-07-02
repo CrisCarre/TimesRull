@@ -13,7 +13,6 @@ module.exports = async (req, res) => {
     res.end();
     return;
   }
-
   Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
 
   const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -22,6 +21,7 @@ module.exports = async (req, res) => {
     await client.connect();
     const { action, table, data, where } = req.body || {};
 
+    // LOGIN
     if (action === 'login') {
       const { email, password } = data;
       const hash = crypto.createHash('sha256').update(password).digest('hex');
@@ -39,6 +39,7 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // SELECT
     if (action === 'select') {
       let query = `SELECT * FROM ${table}`;
       const values = [];
@@ -53,17 +54,24 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // INSERT (simple o múltiple)
     if (action === 'insert') {
-      const keys = Object.keys(data);
-      const vals = Object.values(data);
-      const placeholders = keys.map((_, i) => `$${i+1}`);
-      const query = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
-      const result = await client.query(query, vals);
+      const rows = Array.isArray(data) ? data : [data];
+      const results = [];
+      for (const row of rows) {
+        const keys = Object.keys(row);
+        const vals = Object.values(row);
+        const placeholders = keys.map((_, i) => `$${i+1}`);
+        const query = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
+        const result = await client.query(query, vals);
+        results.push(result.rows[0]);
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: result.rows[0] }));
+      res.end(JSON.stringify({ data: results.length === 1 ? results[0] : results }));
       return;
     }
 
+    // UPDATE
     if (action === 'update') {
       const { id, ...fields } = data;
       const keys = Object.keys(fields);
@@ -77,16 +85,18 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // DELETE — por id o por where arbitrario
     if (action === 'delete') {
-      const { id, ...whereFields } = data;
       let query, values;
-      if (id) {
-        query = `DELETE FROM ${table} WHERE id=$1`;
-        values = [id];
-      } else {
-        const conditions = Object.entries(whereFields).map(([k, v], i) => `${k}=$${i+1}`);
+      if (where) {
+        const conditions = Object.entries(where).map(([k, v], i) => `${k}=$${i+1}`);
         query = `DELETE FROM ${table} WHERE ${conditions.join(' AND ')}`;
-        values = Object.values(whereFields);
+        values = Object.values(where);
+      } else if (data && data.id) {
+        query = `DELETE FROM ${table} WHERE id=$1`;
+        values = [data.id];
+      } else {
+        throw new Error('delete requiere id o where');
       }
       await client.query(query, values);
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -94,12 +104,18 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // UPSERT (config)
     if (action === 'upsert') {
-      const { clave, valor, comentario } = data;
-      const query = `INSERT INTO ${table} (clave, valor, comentario) VALUES ($1, $2, $3) ON CONFLICT (clave) DO UPDATE SET valor=$2, comentario=$3 RETURNING *`;
-      const result = await client.query(query, [clave, valor, comentario || null]);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const { clave, valor, comentario } = item;
+        await client.query(
+          `INSERT INTO config (clave, valor, comentario) VALUES ($1, $2, $3) ON CONFLICT (clave) DO UPDATE SET valor=$2, comentario=$3`,
+          [clave, valor, comentario || null]
+        );
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: result.rows[0] }));
+      res.end(JSON.stringify({ success: true }));
       return;
     }
 
