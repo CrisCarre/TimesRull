@@ -17,14 +17,81 @@
  */
 
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
 /* =====================================================================
-   CONFIGURACIÓN SUPABASE
+   CONFIGURACIÓN API
    ===================================================================== */
-const SUPABASE_URL = 'https://mysswdyczvtcjzbaptnp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15c3N3ZHljenZ0Y2p6YmFwdG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNzY1NjUsImV4cCI6MjA5Mjk1MjU2NX0.uB5l0yq65XS6xhjALakca1QXLSYBuKTMfcuiyb3pQdc';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const API_URL = 'https://times-rull.vercel.app/api';
+
+async function apiCall(body) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error || 'Error de API');
+  return json;
+}
+
+// Capa de compatibilidad con la sintaxis de Supabase
+const supabase = {
+  auth: {
+    getSession: async () => {
+      const user = sessionStorage.getItem('timesrull_user');
+      return { data: { session: user ? { user: JSON.parse(user) } : null } };
+    },
+    signInWithPassword: async ({ email, password }) => {
+      const json = await apiCall({ action: 'login', data: { email, password } });
+      if (json.user) {
+        sessionStorage.setItem('timesrull_user', JSON.stringify(json.user));
+        return { data: { user: json.user }, error: null };
+      }
+      return { data: null, error: { message: json.error } };
+    },
+    signOut: async () => {
+      sessionStorage.removeItem('timesrull_user');
+      return { error: null };
+    },
+  },
+  from: (table) => ({
+    select: (cols) => ({
+      eq: (col, val) => ({
+        order: (ord) => apiCall({ action: 'select', table, where: { [col]: val } }),
+        then: (fn) => apiCall({ action: 'select', table, where: { [col]: val } }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
+      }),
+      order: (ord) => apiCall({ action: 'select', table }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
+      then: (fn) => apiCall({ action: 'select', table }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
+    }),
+    insert: (rows) => ({
+      select: () => ({
+        single: () => apiCall({ action: 'insert', table, data: rows[0] }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
+        then: (fn) => apiCall({ action: 'insert', table, data: rows[0] }).then(r => fn({ data: [r.data], error: null })).catch(e => fn({ data: null, error: e })),
+      }),
+      then: (fn) => apiCall({ action: 'insert', table, data: rows[0] }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
+    }),
+    update: (data) => ({
+      eq: (col, val) => ({
+        select: () => ({
+          single: () => apiCall({ action: 'update', table, data: { ...data, id: val } }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
+        }),
+        then: (fn) => apiCall({ action: 'update', table, data: { ...data, id: val } }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
+      }),
+    }),
+    delete: () => ({
+      eq: (col, val) => ({
+        then: (fn) => apiCall({ action: 'delete', table, data: { id: val } }).then(r => fn({ error: null })).catch(e => fn({ error: e })),
+      }),
+    }),
+    upsert: (rows, opts) => ({
+      then: (fn) => {
+        const items = Array.isArray(rows) ? rows : [rows];
+        Promise.all(items.map(item => apiCall({ action: 'upsert', table, data: item })))
+          .then(() => fn({ error: null }))
+          .catch(e => fn({ error: e }));
+      },
+    }),
+  }),
+};
 
 /* =====================================================================
    ESTADO GLOBAL

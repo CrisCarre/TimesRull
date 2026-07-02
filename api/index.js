@@ -1,4 +1,5 @@
 const { Client } = require('pg');
+const crypto = require('crypto');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,7 +8,6 @@ const corsHeaders = {
 };
 
 module.exports = async (req, res) => {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(200, corsHeaders);
     res.end();
@@ -20,13 +20,11 @@ module.exports = async (req, res) => {
 
   try {
     await client.connect();
-
     const { action, table, data, where } = req.body || {};
 
-    // LOGIN
     if (action === 'login') {
       const { email, password } = data;
-      const hash = require('crypto').createHash('sha256').update(password).digest('hex');
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
       const result = await client.query(
         'SELECT id, email, rol, empleado_id FROM usuarios WHERE email=$1 AND password_hash=$2 AND activo=true',
         [email, hash]
@@ -41,7 +39,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // SELECT
     if (action === 'select') {
       let query = `SELECT * FROM ${table}`;
       const values = [];
@@ -56,7 +53,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // INSERT
     if (action === 'insert') {
       const keys = Object.keys(data);
       const vals = Object.values(data);
@@ -68,7 +64,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // UPDATE
     if (action === 'update') {
       const { id, ...fields } = data;
       const keys = Object.keys(fields);
@@ -82,12 +77,29 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // DELETE
     if (action === 'delete') {
-      const query = `DELETE FROM ${table} WHERE id=$1`;
-      await client.query(query, [data.id]);
+      const { id, ...whereFields } = data;
+      let query, values;
+      if (id) {
+        query = `DELETE FROM ${table} WHERE id=$1`;
+        values = [id];
+      } else {
+        const conditions = Object.entries(whereFields).map(([k, v], i) => `${k}=$${i+1}`);
+        query = `DELETE FROM ${table} WHERE ${conditions.join(' AND ')}`;
+        values = Object.values(whereFields);
+      }
+      await client.query(query, values);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
+      return;
+    }
+
+    if (action === 'upsert') {
+      const { clave, valor, comentario } = data;
+      const query = `INSERT INTO ${table} (clave, valor, comentario) VALUES ($1, $2, $3) ON CONFLICT (clave) DO UPDATE SET valor=$2, comentario=$3 RETURNING *`;
+      const result = await client.query(query, [clave, valor, comentario || null]);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ data: result.rows[0] }));
       return;
     }
 
