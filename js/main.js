@@ -98,6 +98,7 @@ const supabase = {
    ===================================================================== */
 const state = {
   user: null,
+  rol: null,  // 'director' | 'empleado'
   config: {},
   /* NEW: outlets */
   outlets: [],           // [{id, nombre, icono, activo}]
@@ -135,6 +136,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) { renderLogin(); return; }
   state.user = session.user;
+  state.rol = session.user.rol || 'empleado';
+  state.empleadoId = session.user.empleado_id || null;
   await cargarTodo();
 });
 
@@ -151,22 +154,37 @@ function renderLogin(error = '') {
           <input type="email" id="email" placeholder="Email" autocomplete="email" required>
           <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
           <button type="submit" id="btn-login">Entrar</button>
-          <div id="login-error" class="error-msg">${error}</div>
+          ${error ? `<div class="login-error-msg">⚠️ ${error}</div>` : ''}
         </form>
       </div>
     </div>`;
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btn-login');
-    const err = document.getElementById('login-error');
-    btn.disabled = true; err.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Entrando…';
     const { data, error } = await supabase.auth.signInWithPassword({
       email: document.getElementById('email').value,
       password: document.getElementById('password').value,
     });
     btn.disabled = false;
-    if (error) { err.textContent = error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message; return; }
+    btn.textContent = 'Entrar';
+    if (error) {
+      const msg = error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message;
+      const card = document.querySelector('.login-card');
+      card.classList.add('shake');
+      setTimeout(() => card.classList.remove('shake'), 500);
+      const oldErr = document.querySelector('.login-error-msg');
+      if (oldErr) oldErr.remove();
+      const errEl = document.createElement('div');
+      errEl.className = 'login-error-msg';
+      errEl.textContent = '⚠️ ' + msg;
+      document.getElementById('login-form').appendChild(errEl);
+      return;
+    }
     state.user = data.user;
+    state.rol = data.user.rol || 'empleado';
+    state.empleadoId = data.user.empleado_id || null;
     await cargarTodo();
   });
 }
@@ -433,6 +451,9 @@ function toast(msg, tipo = '') {
    RENDER PRINCIPAL
    ===================================================================== */
 function render() {
+  // Vista empleado — interfaz reducida
+  if (state.rol === 'empleado') { renderEmpleadoView(); return; }
+
   const outlet = ctxOutlet();
   const hasOutlets = state.outlets.length > 0;
 
@@ -532,6 +553,131 @@ function render() {
   else if (state.view === 'reglas') renderReglas();
   else if (state.view === 'outlets') renderOutlets();
   else if (state.view === 'config') renderConfig();
+}
+
+/* =====================================================================
+   VISTA EMPLEADO — interfaz reducida
+   ===================================================================== */
+function renderEmpleadoView() {
+  const emp = state.empleados.find(e => e.id === state.empleadoId);
+  const empNombre = emp ? emp.nombre : state.user?.email || '';
+  const viewEmp = state.viewEmp || 'calendario';
+
+  document.getElementById('root').innerHTML = `
+    <header class="topbar">
+      <div class="brand">
+        <strong>${escapeHtml(state.config.NOMBRE_HOTEL || 'Hotel')}</strong>
+        <span class="user">👤 ${escapeHtml(empNombre)}</span>
+      </div>
+      <nav class="tabs">
+        <button data-vemp="calendario" class="${viewEmp === 'calendario' ? 'active' : ''}">Calendario</button>
+        <button data-vemp="semana" class="${viewEmp === 'semana' ? 'active' : ''}">Semana</button>
+        <button data-vemp="disponibilidad" class="${viewEmp === 'disponibilidad' ? 'active' : ''}">Mi disponibilidad</button>
+      </nav>
+      <button class="logout" id="btn-logout">Salir</button>
+    </header>
+    <main id="main"></main>
+    <div id="modal-root"></div>
+  `;
+
+  document.getElementById('btn-logout').addEventListener('click', logout);
+  document.querySelectorAll('[data-vemp]').forEach(b => {
+    b.addEventListener('click', () => { state.viewEmp = b.dataset.vemp; renderEmpleadoView(); });
+  });
+
+  if (viewEmp === 'calendario') renderCalendarioEmpleado();
+  else if (viewEmp === 'semana') renderSemanaEmpleado();
+  else if (viewEmp === 'disponibilidad') renderDisponibilidadEmpleado();
+}
+
+function renderCalendarioEmpleado() {
+  // Usa el calendario normal pero en modo solo lectura
+  renderCalendario(true);
+}
+
+function renderSemanaEmpleado() {
+  renderSemana(true);
+}
+
+function renderDisponibilidadEmpleado() {
+  const main = document.getElementById('main');
+  const emp = state.empleados.find(e => e.id === state.empleadoId);
+  if (!emp) { main.innerHTML = '<div class="empty-state">Empleado no encontrado</div>'; return; }
+
+  const misDisp = state.disponibilidad.filter(d => d.empleado_id === state.empleadoId);
+
+  main.innerHTML = `
+    <div style="padding:24px;max-width:700px;margin:0 auto">
+      <h2 style="margin-bottom:16px">Mi disponibilidad</h2>
+      <button class="btn-pri" id="btn-nueva-disp" style="margin-bottom:20px">+ Nueva solicitud</button>
+      ${misDisp.length === 0 ? '<div class="empty-state">Sin solicitudes registradas</div>' : `
+        <div class="cards-grid">
+          ${misDisp.map(d => `
+            <div class="card" style="padding:14px">
+              <div style="font-weight:600;margin-bottom:4px">${tipoDispLabel(d.tipo)}</div>
+              <div style="font-size:13px;color:var(--muted)">${d.fecha_inicio} → ${d.fecha_fin}</div>
+              ${d.nota ? `<div style="font-size:12px;margin-top:6px;color:var(--muted)">${escapeHtml(d.nota)}</div>` : ''}
+              <button class="btn-del" data-id="${d.id}" style="margin-top:10px;font-size:11px">Eliminar</button>
+            </div>
+          `).join('')}
+        </div>
+      `}
+    </div>
+    <div id="modal-root"></div>
+  `;
+
+  document.getElementById('btn-nueva-disp').addEventListener('click', () => {
+    document.getElementById('modal-root').innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal">
+          <h3>Nueva solicitud</h3>
+          <label>Tipo</label>
+          <select id="disp-tipo">
+            <option value="vacaciones">Vacaciones</option>
+            <option value="baja">Baja médica</option>
+            <option value="personal">Asunto personal</option>
+            <option value="otros">Otros</option>
+          </select>
+          <label>Desde</label>
+          <input type="date" id="disp-ini">
+          <label>Hasta</label>
+          <input type="date" id="disp-fin">
+          <label>Nota (opcional)</label>
+          <input type="text" id="disp-nota" placeholder="Motivo...">
+          <div class="modal-actions">
+            <button class="btn-sec" id="btn-cancel-disp">Cancelar</button>
+            <button class="btn-pri" id="btn-save-disp">Guardar</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('btn-cancel-disp').addEventListener('click', () => { document.getElementById('modal-root').innerHTML = ''; });
+    document.getElementById('btn-save-disp').addEventListener('click', async () => {
+      const payload = {
+        empleado_id: state.empleadoId,
+        fecha_inicio: document.getElementById('disp-ini').value,
+        fecha_fin: document.getElementById('disp-fin').value,
+        tipo: document.getElementById('disp-tipo').value,
+        nota: document.getElementById('disp-nota').value,
+      };
+      if (!payload.fecha_inicio || !payload.fecha_fin) { toast('Rellena las fechas', 'error'); return; }
+      const { data, error } = await supabase.from('disponibilidad').insert([payload]).select().single();
+      if (error) { toast('Error al guardar', 'error'); return; }
+      state.disponibilidad.push(data);
+      toast('Solicitud guardada', 'success');
+      renderDisponibilidadEmpleado();
+    });
+  });
+
+  document.querySelectorAll('.btn-del[data-id]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const id = b.dataset.id;
+      const { error } = await supabase.from('disponibilidad').delete().eq('id', id);
+      if (error) { toast('Error al eliminar', 'error'); return; }
+      state.disponibilidad = state.disponibilidad.filter(d => d.id !== id);
+      toast('Eliminado', 'success');
+      renderDisponibilidadEmpleado();
+    });
+  });
 }
 
 /* =====================================================================
@@ -655,7 +801,7 @@ function renderOverview() {
 /* =====================================================================
    VISTA CALENDARIO
    ===================================================================== */
-function renderCalendario() {
+function renderCalendario(soloLectura = false) {
   const main = document.getElementById('main');
   const cur = state.cursorMes;
   const year = cur.getFullYear();
@@ -728,7 +874,7 @@ function renderCalendario() {
   document.getElementById('prev-mes').addEventListener('click', () => { state.cursorMes = new Date(year, mes - 1, 1); render(); });
   document.getElementById('next-mes').addEventListener('click', () => { state.cursorMes = new Date(year, mes + 1, 1); render(); });
   document.querySelectorAll('.cal-day[data-fecha]').forEach(el => {
-    el.addEventListener('click', () => abrirModalDia(el.dataset.fecha));
+    el.addEventListener('click', () => { if (!soloLectura) abrirModalDia(el.dataset.fecha); });
   });
 }
 
@@ -1002,7 +1148,7 @@ async function guardarComoPlantilla(draft) {
 /* =====================================================================
    VISTA SEMANA
    ===================================================================== */
-function renderSemana() {
+function renderSemana(soloLectura = false) {
   const main = document.getElementById('main');
   const lunes = state.cursorSemana;
   const dias = diasSemana(lunes);
