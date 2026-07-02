@@ -228,7 +228,7 @@ async function cargarTodo() {
       max_horas_semana: parseFloat(e.max_horas_semana || 40),
     }));
 
-    state.planificacion = planRes.data.map(p => ({ ...p, horas: parseFloat(p.horas) }));
+    state.planificacion = planRes.data.map(p => ({ ...p, horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
     state.festivos = {};
     festRes.data.forEach(f => state.festivos[f.fecha] = f.nombre);
     state.disponibilidad = dispRes.data;
@@ -615,7 +615,7 @@ function renderDisponibilidadEmpleado() {
           ${misDisp.map(d => `
             <div class="card" style="padding:14px">
               <div style="font-weight:600;margin-bottom:4px">${tipoDispLabel(d.tipo)}</div>
-              <div style="font-size:13px;color:var(--muted)">${d.fecha_inicio ? d.fecha_inicio.split('T')[0] : ''} → ${d.fecha_fin ? d.fecha_fin.split('T')[0] : ''}</div>
+              <div style="font-size:13px;color:var(--muted)">${String(d.fecha_inicio).slice(0,10)} → ${String(d.fecha_fin).slice(0,10)}</div>
               ${d.nota ? `<div style="font-size:12px;margin-top:6px;color:var(--muted)">${escapeHtml(d.nota)}</div>` : ''}
               <button class="btn-del" data-id="${d.id}" style="margin-top:10px;font-size:11px">Eliminar</button>
             </div>
@@ -738,6 +738,32 @@ function renderOverview() {
     const presColor = pct >= 100 ? 'var(--color-alerta)' : pct >= 90 ? 'var(--color-warn)' : 'var(--color-primario)';
     return `
         <div class="overview-card" data-outlet="${outlet.id}">
+          <div class="overview-card-shop">
+              <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+                <!-- Base building -->
+                <rect x="30" y="55" width="140" height="70" rx="3" fill="#146385" opacity="0.15"/>
+                <!-- Windows -->
+                <rect x="42" y="68" width="42" height="35" rx="3" fill="#146385" opacity="0.25"/>
+                <rect x="116" y="68" width="42" height="35" rx="3" fill="#146385" opacity="0.25"/>
+                <!-- Door -->
+                <rect x="84" y="85" width="32" height="40" rx="2" fill="#122c30" opacity="0.2"/>
+                <!-- Awning base -->
+                <path d="M20 52 Q100 38 180 52" stroke="#e39915" stroke-width="3" fill="none"/>
+                <!-- Awning stripes -->
+                <path d="M20 52 Q30 42 40 52" fill="#e39915" opacity="0.8"/>
+                <path d="M40 52 Q50 40 60 52" fill="#f6eda5" opacity="0.9"/>
+                <path d="M60 52 Q70 39 80 52" fill="#e39915" opacity="0.8"/>
+                <path d="M80 52 Q90 38 100 52" fill="#f6eda5" opacity="0.9"/>
+                <path d="M100 52 Q110 38 120 52" fill="#e39915" opacity="0.8"/>
+                <path d="M120 52 Q130 39 140 52" fill="#f6eda5" opacity="0.9"/>
+                <path d="M140 52 Q150 40 160 52" fill="#e39915" opacity="0.8"/>
+                <path d="M160 52 Q170 42 180 52" fill="#f6eda5" opacity="0.9"/>
+                <!-- Awning bottom edge -->
+                <path d="M18 54 Q100 68 182 54" stroke="#e39915" stroke-width="2" fill="none" opacity="0.6"/>
+                <!-- Sign -->
+                <rect x="70" y="60" width="60" height="14" rx="3" fill="#eccc5b" opacity="0.7"/>
+              </svg>
+            </div>
           <div class="overview-card-head">
             <div>
               <p class="overview-outlet-name">${outlet.icono || '🏨'} ${escapeHtml(outlet.nombre)}</p>
@@ -748,12 +774,12 @@ function renderOverview() {
             <button class="overview-dept-btn foh" data-outlet="${outlet.id}" data-dept="FOH">
               <span class="overview-dept-btn-label">FOH</span>
               <span class="overview-dept-btn-count">${foh}</span>
-              <span class="overview-dept-btn-sub">Front of House</span>
+              
             </button>
             <button class="overview-dept-btn boh" data-outlet="${outlet.id}" data-dept="BOH">
               <span class="overview-dept-btn-label">BOH</span>
               <span class="overview-dept-btn-count">${boh}</span>
-              <span class="overview-dept-btn-sub">Back of House</span>
+              
             </button>
           </div>
           <div class="overview-kpis">
@@ -964,8 +990,8 @@ function renderModalDia(fecha, draft) {
   const dispSIN = disponibles.filter(e => !deptDeEmpleado(e.id));
   let addOpts = '<option value="">+ Añadir empleado…</option>';
   if (outlet) {
-    if (dispFOH.length > 0) addOpts += `<optgroup label="FOH – Front of House">${dispFOH.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('')}</optgroup>`;
-    if (dispBOH.length > 0) addOpts += `<optgroup label="BOH – Back of House">${dispBOH.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('')}</optgroup>`;
+    if (dispFOH.length > 0) addOpts += `<optgroup label="FOH">${dispFOH.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('')}</optgroup>`;
+    if (dispBOH.length > 0) addOpts += `<optgroup label="BOH">${dispBOH.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('')}</optgroup>`;
     if (dispSIN.length > 0) addOpts += `<optgroup label="Sin departamento">${dispSIN.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)}</option>`).join('')}</optgroup>`;
   } else {
     addOpts += disponibles.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('');
@@ -1234,7 +1260,7 @@ function renderSemana(soloLectura = false) {
   document.getElementById('btn-pdf-sem').addEventListener('click', exportarPDFSemana);
 
   document.querySelectorAll('.cell-sem').forEach(td => {
-    td.addEventListener('click', () => abrirModalCelda(td.dataset.fecha, parseInt(td.dataset.emp, 10)));
+    td.addEventListener('click', () => abrirModalCelda(td.dataset.fecha, parseInt(td.dataset.emp)));
   });
 }
 
@@ -1318,13 +1344,17 @@ async function guardarCelda(fecha, empId) {
   if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
   const payload = { turno, horas, hora_inicio: horaIni || null, hora_fin: horaFin || null };
   try {
-    const existente = state.planificacion.find(a => a.fecha === fecha && a.empleado_id === id);
+    const existente = state.planificacion.find(a => a.fecha === fecha && parseInt(a.empleado_id, 10) === id);
     if (existente) {
       const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
-      if (error) throw error; Object.assign(existente, payload);
+      if (error) throw error;
+      Object.assign(existente, payload);
     } else {
-      const { data, error } = await supabase.from('planificacion').insert([{ fecha, empleado_id: id, ...payload }]).select().single();
-      if (error) throw error; state.planificacion.push({ ...data, horas: parseFloat(data.horas) });
+      // Llamada directa a la API para insertar y obtener el resultado
+      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha, empleado_id: id, ...payload } });
+      if (res.error) throw new Error(res.error);
+      const nuevo = res.data;
+      state.planificacion.push({ ...nuevo, empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
     }
     cerrarModal(); render(); toast('Guardado', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -1332,7 +1362,8 @@ async function guardarCelda(fecha, empId) {
 
 async function quitarCelda(fecha, empId) {
   try {
-    const existente = state.planificacion.find(a => a.fecha === fecha && a.empleado_id === empId);
+    const id = parseInt(empId, 10);
+    const existente = state.planificacion.find(a => a.fecha === fecha && parseInt(a.empleado_id, 10) === id);
     if (!existente) { cerrarModal(); return; }
     const { error } = await supabase.from('planificacion').delete().eq('id', existente.id);
     if (error) throw error;
