@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js VERSION8
+ * Planificación Hotel — main.js VERSION 8
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -385,6 +385,15 @@ function totalDia(fecha) {
 /* =====================================================================
    AVISOS
    ===================================================================== */
+function normalizarPuesto(p) {
+  if (!p) return '';
+  return p.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function puestosDeRegla(regla) {
+  return (regla.puesto || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
 function avisosDia(fecha) {
   const out = [];
   const asigs = asignacionesDe(fecha);
@@ -398,9 +407,10 @@ function avisosDia(fecha) {
   const fechaObj = parseISO(fecha);
   let dow = fechaObj.getDay(); if (dow === 0) dow = 7;
   state.reglasMinimo.filter(r => r.dia_semana === dow).forEach(regla => {
+    const puestosRegla = puestosDeRegla(regla).map(normalizarPuesto);
     const cumplido = asigs.filter(a => {
       if (a.turno !== regla.turno) return false;
-      if (regla.puesto) { const e = empById[a.empleado_id]; return e && e.puesto === regla.puesto; }
+      if (puestosRegla.length) { const e = empById[a.empleado_id]; return e && puestosRegla.includes(normalizarPuesto(e.puesto)); }
       return true;
     }).length;
     if (cumplido < regla.minimo) {
@@ -1899,7 +1909,7 @@ function renderReglas(container) {
             <div class="regla-card-top">
               <span class="regla-dow">${dowNames[r.dia_semana]}</span>
               <span class="turno-pill" style="background:${tColor};font-size:10px;padding:2px 7px">${r.turno}</span>
-              ${r.puesto ? `<span class="regla-puesto">${escapeHtml(r.puesto)}</span>` : `<span class="regla-puesto muted">cualquiera</span>`}
+              ${r.puesto ? `<span class="regla-puesto">${escapeHtml(puestosDeRegla(r).join(', '))}</span>` : `<span class="regla-puesto muted">cualquiera</span>`}
               <button class="disp-del-btn" data-del-regla="${r.id}" style="margin-left:auto">×</button>
             </div>
             <div class="regla-card-bot">
@@ -1923,8 +1933,8 @@ function renderReglas(container) {
               <select id="r-turno">${turnosOrden.map(t => `<option value="${t}">${t} – ${escapeHtml(turnoNombres[t])}</option>`).join('')}</select>
             </label>
           </div>
-          <label>Puesto (opcional)
-            <select id="r-puesto"><option value="">— cualquiera —</option>${puestosUnicos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')}</select>
+          <label>Puesto (opcional) <span style="font-size:10px;color:var(--muted)">— deja vacío para "cualquiera", o marca los que cuenten como equivalentes</span>
+            <div class="puesto-check-grid">${puestosUnicos.map(p => `<label class="puesto-check"><input type="checkbox" value="${escapeHtml(p)}"> ${escapeHtml(p)}</label>`).join('')}</div>
           </label>
           <div class="form-row">
             <label>Mínimo de personas
@@ -1944,10 +1954,11 @@ function renderReglas(container) {
     document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
     document.getElementById('btn-guardar').addEventListener('click', async () => {
       const hMin = parseFloat(document.getElementById('r-horas').value) || null;
+      const puestosSel = [...document.querySelectorAll('.puesto-check input:checked')].map(i => i.value);
       const payload = {
         dia_semana: parseInt(document.getElementById('r-dow').value),
         turno: document.getElementById('r-turno').value,
-        puesto: document.getElementById('r-puesto').value || null,
+        puesto: puestosSel.length ? puestosSel.join(', ') : null,
         minimo: parseInt(document.getElementById('r-min').value) || 1,
         horas_minimas: hMin,
       };
