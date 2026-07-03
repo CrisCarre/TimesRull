@@ -240,7 +240,7 @@ async function cargarTodo() {
       max_horas_semana: parseFloat(e.max_horas_semana || 40),
     }));
 
-    state.planificacion = planRes.data.map(p => ({ ...p, fecha: String(p.fecha).slice(0,10), horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
+    state.planificacion = planRes.data.map(p => ({ ...p, fecha: String(p.fecha).slice(0, 10), horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
     state.festivos = {};
     festRes.data.forEach(f => state.festivos[f.fecha] = f.nombre);
     state.disponibilidad = dispRes.data;
@@ -324,8 +324,8 @@ function presupuestoCtx() {
 /** Asignaciones filtradas por contexto */
 function asignacionesDe(fecha) {
   const emps = new Set(empleadosEnContexto().map(e => e.id));
-  const f = String(fecha).slice(0,10);
-  return state.planificacion.filter(a => String(a.fecha).slice(0,10) === f && emps.has(a.empleado_id));
+  const f = String(fecha).slice(0, 10);
+  return state.planificacion.filter(a => String(a.fecha).slice(0, 10) === f && emps.has(a.empleado_id));
 }
 
 /** Planificación completa filtrada por contexto (para resumen mes) */
@@ -753,8 +753,8 @@ function renderOverview() {
         <div class="overview-card" data-outlet="${outlet.id}">
           <div class="overview-card-shop">
               ${outlet.imagen
-                ? `<img src="${outlet.imagen}" alt="${escapeHtml(outlet.nombre)}" style="width:100%;height:100%;object-fit:cover">`
-                : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f4f5;color:#146385;font-size:13px;font-weight:500;letter-spacing:0.5px">📷 Sin imagen</div>`}
+        ? `<img src="${outlet.imagen}" alt="${escapeHtml(outlet.nombre)}" style="width:100%;height:100%;object-fit:cover">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f4f5;color:#146385;font-size:13px;font-weight:500;letter-spacing:0.5px">📷 Sin imagen</div>`}
             </div>
           <div class="overview-card-head">
             <div>
@@ -1011,15 +1011,17 @@ function renderModalDia(fecha, draft) {
             ${draft.length > 0 ? `<button class="btn-sec" id="btn-guardar-plantilla">Guardar como plantilla</button>` : ''}
           </div>
           ${tablaHTML}
-          ${disponibles.length > 0 ? `
-            <div class="add-empleado">
+          <div class="dia-resumen-row">
+            ${disponibles.length > 0 ? `
+            <div class="add-empleado-box">
               <select id="sel-add-emp">${addOpts}</select>
               ${noDispCount > 0 ? `<div class="muted-small">${noDispCount} empleado${noDispCount > 1 ? 's' : ''} no disponible${noDispCount > 1 ? 's' : ''} este día</div>` : ''}
-            </div>`: ''}
-          <div class="totales-dia">
-            <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
-            <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
-            <div class="total-grande"><span>TOTAL DÍA:</span><strong>${divisa(totalPersonal + fijo)}</strong></div>
+            </div>` : '<div></div>'}
+            <div class="totales-dia">
+              <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
+              <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
+              <div class="total-grande"><span>TOTAL DÍA:</span><strong>${divisa(totalPersonal + fijo)}</strong></div>
+            </div>
           </div>
         </div>
         <div class="modal-foot">
@@ -1337,7 +1339,7 @@ async function guardarCelda(fecha, empId) {
   if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
   const payload = { turno, horas, hora_inicio: horaIni || null, hora_fin: horaFin || null };
   try {
-    const existente = state.planificacion.find(a => String(a.fecha).slice(0,10) === fechaStr && parseInt(a.empleado_id, 10) === id);
+    const existente = state.planificacion.find(a => String(a.fecha).slice(0, 10) === fechaStr && parseInt(a.empleado_id, 10) === id);
     if (existente) {
       const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
       if (error) throw error;
@@ -2222,7 +2224,7 @@ function renderConfig() {
     <div style="padding:0">
       <div class="config-subtabs">
         ${tabs.map(t => `
-          <button class="config-subtab${subview===t.id?' active':''}" data-subtab="${t.id}">
+          <button class="config-subtab${subview === t.id ? ' active' : ''}" data-subtab="${t.id}">
             <span class="config-subtab-icon">${t.icon}</span>
             <span class="config-subtab-label">${t.label}</span>
           </button>`).join('')}
