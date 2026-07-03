@@ -181,16 +181,18 @@ function renderLogin(error = '') {
     btn.disabled = false;
     btn.textContent = 'Entrar';
     if (error) {
-      const msg = error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message;
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      const msg = 'Email o contraseña incorrectos';
       const card = document.querySelector('.login-card');
-      card.classList.add('shake');
-      setTimeout(() => card.classList.remove('shake'), 500);
+      if (card) { card.classList.add('shake'); setTimeout(() => card.classList.remove('shake'), 500); }
       const oldErr = document.querySelector('.login-error-msg');
       if (oldErr) oldErr.remove();
       const errEl = document.createElement('div');
       errEl.className = 'login-error-msg';
       errEl.textContent = '⚠️ ' + msg;
-      document.getElementById('login-form').appendChild(errEl);
+      const form = document.getElementById('login-form');
+      if (form) form.appendChild(errEl);
       return;
     }
     state.user = data.user;
@@ -747,17 +749,14 @@ function renderOverview() {
     return `
         <div class="overview-card" data-outlet="${outlet.id}">
           <div class="overview-card-shop">
-              <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-                <!-- Base building -->
+              ${outlet.imagen
+                ? `<img src="${outlet.imagen}" alt="${escapeHtml(outlet.nombre)}" style="width:100%;height:100%;object-fit:cover">`
+                : `<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
                 <rect x="30" y="55" width="140" height="70" rx="3" fill="#146385" opacity="0.15"/>
-                <!-- Windows -->
                 <rect x="42" y="68" width="42" height="35" rx="3" fill="#146385" opacity="0.25"/>
                 <rect x="116" y="68" width="42" height="35" rx="3" fill="#146385" opacity="0.25"/>
-                <!-- Door -->
                 <rect x="84" y="85" width="32" height="40" rx="2" fill="#122c30" opacity="0.2"/>
-                <!-- Awning base -->
                 <path d="M20 52 Q100 38 180 52" stroke="#e39915" stroke-width="3" fill="none"/>
-                <!-- Awning stripes -->
                 <path d="M20 52 Q30 42 40 52" fill="#e39915" opacity="0.8"/>
                 <path d="M40 52 Q50 40 60 52" fill="#f6eda5" opacity="0.9"/>
                 <path d="M60 52 Q70 39 80 52" fill="#e39915" opacity="0.8"/>
@@ -766,11 +765,9 @@ function renderOverview() {
                 <path d="M120 52 Q130 39 140 52" fill="#f6eda5" opacity="0.9"/>
                 <path d="M140 52 Q150 40 160 52" fill="#e39915" opacity="0.8"/>
                 <path d="M160 52 Q170 42 180 52" fill="#f6eda5" opacity="0.9"/>
-                <!-- Awning bottom edge -->
                 <path d="M18 54 Q100 68 182 54" stroke="#e39915" stroke-width="2" fill="none" opacity="0.6"/>
-                <!-- Sign -->
                 <rect x="70" y="60" width="60" height="14" rx="3" fill="#eccc5b" opacity="0.7"/>
-              </svg>
+              </svg>`}
             </div>
           <div class="overview-card-head">
             <div>
@@ -2089,6 +2086,15 @@ function abrirModalOutlet(outlet) {
           </label>
         </div>
         <label>Orden de aparición <input type="number" id="o-orden" min="1" value="${outlet.orden || 1}"></label>
+        <div class="modal-section-divider">🖼️ Imagen del local</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${outlet.imagen ? `<img src="${outlet.imagen}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">` : '<div style="height:80px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Sin imagen</div>'}
+          <label style="cursor:pointer;display:inline-block">
+            <input type="file" id="o-imagen-file" accept="image/*" style="display:none">
+            <span class="btn-sec" style="display:inline-block;cursor:pointer">📷 Subir imagen</span>
+          </label>
+          <input type="hidden" id="o-imagen-data" value="${outlet.imagen || ''}">
+        </div>
 
         <div class="modal-section-divider">💰 Presupuesto mensual</div>
         <div class="form-row">
@@ -2143,8 +2149,22 @@ function abrirModalOutlet(outlet) {
   };
   ['o-kpi-revenue', 'o-kpi-foh', 'o-kpi-boh'].forEach(id => document.getElementById(id).addEventListener('input', updatePreviews));
 
+  // Lector de imagen
+  document.getElementById('o-imagen-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      document.getElementById('o-imagen-data').value = ev.target.result;
+      const prev = document.querySelector('#modal-root img');
+      if (prev) prev.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
   document.getElementById('btn-guardar').addEventListener('click', async () => {
-    const payload = { nombre: document.getElementById('o-nombre').value.trim(), icono: document.getElementById('o-icono').value.trim() || '🏨', orden: parseInt(document.getElementById('o-orden').value) || 1, activo: true };
+    const imagenData = document.getElementById('o-imagen-data').value || null;
+    const payload = { nombre: document.getElementById('o-nombre').value.trim(), icono: document.getElementById('o-icono').value.trim() || '🏨', orden: parseInt(document.getElementById('o-orden').value) || 1, activo: true, imagen: imagenData };
     if (!payload.nombre) { toast('El nombre es obligatorio', 'error'); return; }
     const pGlobal = parseFloat(document.getElementById('o-pres-global').value) || 0;
     const pFOH = parseFloat(document.getElementById('o-pres-foh').value) || 0;
