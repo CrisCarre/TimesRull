@@ -240,7 +240,7 @@ async function cargarTodo() {
       max_horas_semana: parseFloat(e.max_horas_semana || 40),
     }));
 
-    state.planificacion = planRes.data.map(p => ({ ...p, horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
+    state.planificacion = planRes.data.map(p => ({ ...p, fecha: String(p.fecha).slice(0,10), horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
     state.festivos = {};
     festRes.data.forEach(f => state.festivos[f.fecha] = f.nombre);
     state.disponibilidad = dispRes.data;
@@ -324,7 +324,8 @@ function presupuestoCtx() {
 /** Asignaciones filtradas por contexto */
 function asignacionesDe(fecha) {
   const emps = new Set(empleadosEnContexto().map(e => e.id));
-  return state.planificacion.filter(a => a.fecha === fecha && emps.has(a.empleado_id));
+  const f = String(fecha).slice(0,10);
+  return state.planificacion.filter(a => String(a.fecha).slice(0,10) === f && emps.has(a.empleado_id));
 }
 
 /** Planificación completa filtrada por contexto (para resumen mes) */
@@ -476,7 +477,7 @@ function render() {
   const deptButtons = hasOutlets && state.ctxOutletId ? DEPTS.map(d => {
     const isActive = state.ctxDept === d;
     const cls = isActive ? `dept-badge active-${DEPT_CLASS[d]}` : `dept-badge ${DEPT_CLASS[d]}`;
-    return `<button class="${cls}" data-dept="${d}">${d} <span style="font-size:10px;font-weight:400">${DEPT_LABELS[d]}</span></button>`;
+    return `<button class="${cls}" data-dept="${d}">${d}</button>`;
   }).join('') + `<button class="${state.ctxDept === 'ALL' ? 'dept-badge active-all' : 'dept-badge all'}" data-dept="ALL">Ambos</button>` : '';
 
   const empCount = empleadosEnContexto().length;
@@ -751,8 +752,7 @@ function renderOverview() {
     return `
         <div class="overview-card" data-outlet="${outlet.id}">
           <div class="overview-card-shop">
-              ${outlet.imagen ? `<img src="${outlet.imagen}" style="width:100%;height:100%;object-fit:cover">` : `<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">`}
-              ${outlet.imagen ? '' : `
+              <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
                 <!-- Base building -->
                 <rect x="30" y="55" width="140" height="70" rx="3" fill="#146385" opacity="0.15"/>
                 <!-- Windows -->
@@ -775,7 +775,7 @@ function renderOverview() {
                 <path d="M18 54 Q100 68 182 54" stroke="#e39915" stroke-width="2" fill="none" opacity="0.6"/>
                 <!-- Sign -->
                 <rect x="70" y="60" width="60" height="14" rx="3" fill="#eccc5b" opacity="0.7"/>
-              </svg>`}
+              </svg>
             </div>
           <div class="overview-card-head">
             <div>
@@ -1237,7 +1237,7 @@ function renderSemana(soloLectura = false) {
     if (emps.length === 0) return '';
     const deptHeader = outlet && dept !== 'SIN' ? `
       <tr class="dept-row-header">
-        <td colspan="${9}"><span class="dept-badge ${DEPT_CLASS[dept]}" style="font-size:11px;padding:2px 8px">${dept}</span> ${DEPT_LABELS[dept]}</td>
+        <td colspan="${9}"><span class="dept-badge ${DEPT_CLASS[dept]}" style="font-size:11px;padding:2px 8px">${dept}</span></td>
       </tr>` : '';
     return deptHeader + renderEmpRows(emps);
   }).join('');
@@ -1350,6 +1350,7 @@ function abrirModalCelda(fecha, empId) {
 
 async function guardarCelda(fecha, empId) {
   const id = parseInt(empId, 10);
+  const fechaStr = String(fecha).slice(0, 10); // asegurar formato YYYY-MM-DD
   const turno = document.getElementById('cell-turno').value;
   const horaIni = document.getElementById('cell-hora-ini').value;
   const horaFin = document.getElementById('cell-hora-fin').value;
@@ -1357,17 +1358,21 @@ async function guardarCelda(fecha, empId) {
   if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
   const payload = { turno, horas, hora_inicio: horaIni || null, hora_fin: horaFin || null };
   try {
-    const existente = state.planificacion.find(a => a.fecha === fecha && parseInt(a.empleado_id, 10) === id);
+    const existente = state.planificacion.find(a => String(a.fecha).slice(0,10) === fechaStr && parseInt(a.empleado_id, 10) === id);
     if (existente) {
       const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
       if (error) throw error;
       Object.assign(existente, payload);
     } else {
-      // Llamada directa a la API para insertar y obtener el resultado
-      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha, empleado_id: id, ...payload } });
+      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha: fechaStr, empleado_id: id, ...payload } });
       if (res.error) throw new Error(res.error);
       const nuevo = res.data;
-      state.planificacion.push({ ...nuevo, empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
+      state.planificacion.push({
+        ...nuevo,
+        fecha: fechaStr,
+        empleado_id: parseInt(nuevo.empleado_id, 10),
+        horas: parseFloat(nuevo.horas)
+      });
     }
     cerrarModal(); render(); toast('Guardado', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -2095,20 +2100,6 @@ function abrirModalOutlet(outlet) {
         </div>
         <label>Orden de aparición <input type="number" id="o-orden" min="1" value="${outlet.orden || 1}"></label>
 
-        <div class="modal-section-divider">🖼️ Imagen del local</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div id="o-imagen-preview" style="width:100%;height:120px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#f5f5f5;display:flex;align-items:center;justify-content:center">
-            ${outlet.imagen
-              ? `<img src="${outlet.imagen}" style="width:100%;height:100%;object-fit:cover">`
-              : `<span style="color:var(--muted);font-size:12px">Sin imagen</span>`}
-          </div>
-          <label style="cursor:pointer">
-            <input type="file" id="o-imagen-file" accept="image/*" style="display:none">
-            <span class="btn-sec" style="display:inline-block;cursor:pointer;padding:6px 14px;font-size:13px">📷 Subir imagen</span>
-          </label>
-          <input type="hidden" id="o-imagen-data" value="${outlet.imagen || ''}">
-        </div>
-
         <div class="modal-section-divider">💰 Presupuesto mensual</div>
         <div class="form-row">
           <label>Global (todo el local) <input type="number" step="0.01" min="0" id="o-pres-global" value="${presGlobal || ''}"></label>
@@ -2143,30 +2134,6 @@ function abrirModalOutlet(outlet) {
   document.getElementById('modal-cerrar').addEventListener('click', cerrarModal);
   document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
 
-  // Imagen file reader
-  document.getElementById('o-imagen-file').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    // Redimensionar antes de guardar
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX = 800;
-        let w = img.width, h = img.height;
-        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const base64 = canvas.toDataURL('image/jpeg', 0.8);
-        document.getElementById('o-imagen-data').value = base64;
-        document.getElementById('o-imagen-preview').innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:cover">`;
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
   // Icon picker
   document.querySelectorAll('.icon-btn').forEach(b => {
     b.addEventListener('click', () => {
@@ -2187,8 +2154,7 @@ function abrirModalOutlet(outlet) {
   ['o-kpi-revenue', 'o-kpi-foh', 'o-kpi-boh'].forEach(id => document.getElementById(id).addEventListener('input', updatePreviews));
 
   document.getElementById('btn-guardar').addEventListener('click', async () => {
-    const imagenData = document.getElementById('o-imagen-data').value || null;
-    const payload = { nombre: document.getElementById('o-nombre').value.trim(), icono: document.getElementById('o-icono').value.trim() || '🏨', orden: parseInt(document.getElementById('o-orden').value) || 1, activo: true, imagen: imagenData };
+    const payload = { nombre: document.getElementById('o-nombre').value.trim(), icono: document.getElementById('o-icono').value.trim() || '🏨', orden: parseInt(document.getElementById('o-orden').value) || 1, activo: true };
     if (!payload.nombre) { toast('El nombre es obligatorio', 'error'); return; }
     const pGlobal = parseFloat(document.getElementById('o-pres-global').value) || 0;
     const pFOH = parseFloat(document.getElementById('o-pres-foh').value) || 0;
