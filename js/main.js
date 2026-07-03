@@ -163,7 +163,7 @@ function renderLogin(error = '') {
   document.getElementById('root').innerHTML = `
     <div id="login-screen">
       <div class="login-card">
-        <h1>TimesRull</h1>
+        <img src="logo.png" alt="TimesRull" class="login-logo">
         <p class="login-sub">Introduce tus credenciales</p>
         <form id="login-form">
           <input type="email" id="email" placeholder="Email" autocomplete="email" required>
