@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js
+ * Planificación Hotel — main.js VERSION 7
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
