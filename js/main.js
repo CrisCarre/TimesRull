@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js ESTABLE
+ * Planificación Hotel — main.js FIX FECHAS
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -240,7 +240,7 @@ async function cargarTodo() {
       max_horas_semana: parseFloat(e.max_horas_semana || 40),
     }));
 
-    state.planificacion = planRes.data.map(p => ({ ...p, horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
+    state.planificacion = planRes.data.map(p => ({ ...p, fecha: String(p.fecha).slice(0,10), horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
     state.festivos = {};
     festRes.data.forEach(f => state.festivos[f.fecha] = f.nombre);
     state.disponibilidad = dispRes.data;
@@ -324,7 +324,8 @@ function presupuestoCtx() {
 /** Asignaciones filtradas por contexto */
 function asignacionesDe(fecha) {
   const emps = new Set(empleadosEnContexto().map(e => e.id));
-  return state.planificacion.filter(a => a.fecha === fecha && emps.has(a.empleado_id));
+  const f = String(fecha).slice(0,10);
+  return state.planificacion.filter(a => String(a.fecha).slice(0,10) === f && emps.has(a.empleado_id));
 }
 
 /** Planificación completa filtrada por contexto (para resumen mes) */
@@ -1349,6 +1350,7 @@ function abrirModalCelda(fecha, empId) {
 
 async function guardarCelda(fecha, empId) {
   const id = parseInt(empId, 10);
+  const fechaStr = String(fecha).slice(0, 10);
   const turno = document.getElementById('cell-turno').value;
   const horaIni = document.getElementById('cell-hora-ini').value;
   const horaFin = document.getElementById('cell-hora-fin').value;
@@ -1356,17 +1358,16 @@ async function guardarCelda(fecha, empId) {
   if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
   const payload = { turno, horas, hora_inicio: horaIni || null, hora_fin: horaFin || null };
   try {
-    const existente = state.planificacion.find(a => a.fecha === fecha && parseInt(a.empleado_id, 10) === id);
+    const existente = state.planificacion.find(a => String(a.fecha).slice(0,10) === fechaStr && parseInt(a.empleado_id, 10) === id);
     if (existente) {
       const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
       if (error) throw error;
       Object.assign(existente, payload);
     } else {
-      // Llamada directa a la API para insertar y obtener el resultado
-      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha, empleado_id: id, ...payload } });
+      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha: fechaStr, empleado_id: id, ...payload } });
       if (res.error) throw new Error(res.error);
       const nuevo = res.data;
-      state.planificacion.push({ ...nuevo, empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
+      state.planificacion.push({ ...nuevo, fecha: fechaStr, empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
     }
     cerrarModal(); render(); toast('Guardado', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
