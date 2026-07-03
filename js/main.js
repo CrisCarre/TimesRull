@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js
+ * Planificación Hotel — main.js ESTABLE
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -751,9 +751,30 @@ function renderOverview() {
     return `
         <div class="overview-card" data-outlet="${outlet.id}">
           <div class="overview-card-shop">
-              ${outlet.imagen
-                ? `<img src="${outlet.imagen}" alt="${escapeHtml(outlet.nombre)}" style="width:100%;height:100%;object-fit:cover">`
-                : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f4f5;color:#146385;font-size:13px;font-weight:500;letter-spacing:0.5px">📷 Sin imagen</div>`}
+              <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+                <!-- Base building -->
+                <rect x="30" y="55" width="140" height="70" rx="3" fill="#146385" opacity="0.15"/>
+                <!-- Windows -->
+                <rect x="42" y="68" width="42" height="35" rx="3" fill="#146385" opacity="0.25"/>
+                <rect x="116" y="68" width="42" height="35" rx="3" fill="#146385" opacity="0.25"/>
+                <!-- Door -->
+                <rect x="84" y="85" width="32" height="40" rx="2" fill="#122c30" opacity="0.2"/>
+                <!-- Awning base -->
+                <path d="M20 52 Q100 38 180 52" stroke="#e39915" stroke-width="3" fill="none"/>
+                <!-- Awning stripes -->
+                <path d="M20 52 Q30 42 40 52" fill="#e39915" opacity="0.8"/>
+                <path d="M40 52 Q50 40 60 52" fill="#f6eda5" opacity="0.9"/>
+                <path d="M60 52 Q70 39 80 52" fill="#e39915" opacity="0.8"/>
+                <path d="M80 52 Q90 38 100 52" fill="#f6eda5" opacity="0.9"/>
+                <path d="M100 52 Q110 38 120 52" fill="#e39915" opacity="0.8"/>
+                <path d="M120 52 Q130 39 140 52" fill="#f6eda5" opacity="0.9"/>
+                <path d="M140 52 Q150 40 160 52" fill="#e39915" opacity="0.8"/>
+                <path d="M160 52 Q170 42 180 52" fill="#f6eda5" opacity="0.9"/>
+                <!-- Awning bottom edge -->
+                <path d="M18 54 Q100 68 182 54" stroke="#e39915" stroke-width="2" fill="none" opacity="0.6"/>
+                <!-- Sign -->
+                <rect x="70" y="60" width="60" height="14" rx="3" fill="#eccc5b" opacity="0.7"/>
+              </svg>
             </div>
           <div class="overview-card-head">
             <div>
