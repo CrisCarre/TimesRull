@@ -240,7 +240,7 @@ async function cargarTodo() {
       max_horas_semana: parseFloat(e.max_horas_semana || 40),
     }));
 
-    state.planificacion = planRes.data.map(p => ({ ...p, horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
+    state.planificacion = planRes.data.map(p => ({ ...p, fecha: String(p.fecha).slice(0,10), horas: parseFloat(p.horas), empleado_id: parseInt(p.empleado_id, 10) }));
     state.festivos = {};
     festRes.data.forEach(f => state.festivos[f.fecha] = f.nombre);
     state.disponibilidad = dispRes.data;
@@ -324,7 +324,8 @@ function presupuestoCtx() {
 /** Asignaciones filtradas por contexto */
 function asignacionesDe(fecha) {
   const emps = new Set(empleadosEnContexto().map(e => e.id));
-  return state.planificacion.filter(a => a.fecha === fecha && emps.has(a.empleado_id));
+  const f = String(fecha).slice(0,10);
+  return state.planificacion.filter(a => String(a.fecha).slice(0,10) === f && emps.has(a.empleado_id));
 }
 
 /** Planificación completa filtrada por contexto (para resumen mes) */
@@ -476,7 +477,7 @@ function render() {
   const deptButtons = hasOutlets && state.ctxOutletId ? DEPTS.map(d => {
     const isActive = state.ctxDept === d;
     const cls = isActive ? `dept-badge active-${DEPT_CLASS[d]}` : `dept-badge ${DEPT_CLASS[d]}`;
-    return `<button class="${cls}" data-dept="${d}">${d} <span style="font-size:10px;font-weight:400">${DEPT_LABELS[d]}</span></button>`;
+    return `<button class="${cls}" data-dept="${d}">${d}</button>`;
   }).join('') + `<button class="${state.ctxDept === 'ALL' ? 'dept-badge active-all' : 'dept-badge all'}" data-dept="ALL">Ambos</button>` : '';
 
   const empCount = empleadosEnContexto().length;
