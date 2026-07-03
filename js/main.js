@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js
+ * Planificación Hotel — main.js VERSION2
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -1329,6 +1329,7 @@ function abrirModalCelda(fecha, empId) {
 
 async function guardarCelda(fecha, empId) {
   const id = parseInt(empId, 10);
+  const fechaStr = String(fecha).slice(0, 10);
   const turno = document.getElementById('cell-turno').value;
   const horaIni = document.getElementById('cell-hora-ini').value;
   const horaFin = document.getElementById('cell-hora-fin').value;
@@ -1336,17 +1337,16 @@ async function guardarCelda(fecha, empId) {
   if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
   const payload = { turno, horas, hora_inicio: horaIni || null, hora_fin: horaFin || null };
   try {
-    const existente = state.planificacion.find(a => a.fecha === fecha && parseInt(a.empleado_id, 10) === id);
+    const existente = state.planificacion.find(a => String(a.fecha).slice(0,10) === fechaStr && parseInt(a.empleado_id, 10) === id);
     if (existente) {
       const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
       if (error) throw error;
       Object.assign(existente, payload);
     } else {
-      // Llamada directa a la API para insertar y obtener el resultado
-      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha, empleado_id: id, ...payload } });
+      const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha: fechaStr, empleado_id: id, ...payload } });
       if (res.error) throw new Error(res.error);
       const nuevo = res.data;
-      state.planificacion.push({ ...nuevo, empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
+      state.planificacion.push({ ...nuevo, fecha: fechaStr, empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
     }
     cerrarModal(); render(); toast('Guardado', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
