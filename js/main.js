@@ -163,8 +163,8 @@ function renderLogin(error = '') {
   document.getElementById('root').innerHTML = `
     <div id="login-screen">
       <div class="login-card">
-        <h1>Planificación Hotel</h1>
-        <p class="login-sub">Acceso de gestión</p>
+        <h1>TimesRull</h1>
+        <p class="login-sub">Introduce tus credenciales</p>
         <form id="login-form">
           <input type="email" id="email" placeholder="Email" autocomplete="email" required>
           <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
