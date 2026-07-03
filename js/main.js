@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js VersionEstable
+ * Planificación Hotel — main.js Version6
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -384,6 +384,12 @@ function totalDia(fecha) {
 /* =====================================================================
    AVISOS
    ===================================================================== */
+function mismoPuesto(a, b) {
+  if (!a || !b) return false;
+  const norm = s => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[oa]$/, '');
+  return norm(a) === norm(b);
+}
+
 function avisosDia(fecha) {
   const out = [];
   const asigs = asignacionesDe(fecha);
@@ -399,7 +405,7 @@ function avisosDia(fecha) {
   state.reglasMinimo.filter(r => r.dia_semana === dow).forEach(regla => {
     const cumplido = asigs.filter(a => {
       if (a.turno !== regla.turno) return false;
-      if (regla.puesto) { const e = empById[a.empleado_id]; return e && e.puesto === regla.puesto; }
+      if (regla.puesto) { const e = empById[a.empleado_id]; return e && mismoPuesto(e.puesto, regla.puesto); }
       return true;
     }).length;
     if (cumplido < regla.minimo) {
@@ -2350,8 +2356,7 @@ function exportarPDFMes() {
 
   const porEmp = {};
   planificacionCtx().filter(a => a.fecha.startsWith(prefijo)).forEach(a => {
-    const emp = state.empleados.find(e => e.id === a.empleado_id); if (!emp) return;
-    const c = calcularCoste(a, emp, !!state.festivos[a.fecha]);
+    const emp = state.empleados.find(e => e.id === a.empleado_id); if (!emp) return
     const dept = deptDeEmpleado(emp.id) || '';
     if (!porEmp[emp.id]) porEmp[emp.id] = { nombre: emp.nombre, puesto: emp.puesto || '', dept, horas: 0, base: 0, plusN: 0, plusF: 0, total: 0 };
     porEmp[emp.id].horas += a.horas; porEmp[emp.id].base += c.base; porEmp[emp.id].plusN += c.plusN; porEmp[emp.id].plusF += c.plusF; porEmp[emp.id].total += c.total;
@@ -2394,11 +2399,21 @@ function exportarExcelMes() {
   const porEmp = {};
   planificacionCtx().filter(a => a.fecha.startsWith(prefijo)).forEach(a => {
     const emp = state.empleados.find(e => e.id === a.empleado_id); if (!emp) return;
+  toast('Excel generado', 'success');
+}
+
+function exportarCSVMes() {
+  const cur = state.cursorMes;
+  const year = cur.getFullYear(); const mes = cur.getMonth();
+  const prefijo = `${year}-${String(mes + 1).padStart(2, '0')}`;
+  const outlet = ctxOutlet();
+  const lines = [['fecha', 'local', 'departamento', 'empleado', 'puesto', 'turno', 'horas', 'base', 'plus_noct', 'plus_fest', 'festivo', 'total']];
     const c = calcularCoste(a, emp, !!state.festivos[a.fecha]);
     const dept = deptDeEmpleado(emp.id) || '';
     if (!porEmp[emp.id]) porEmp[emp.id] = { Nombre: emp.nombre, Puesto: emp.puesto || '', Departamento: dept, Local: outlet ? outlet.nombre : '', ' Coste/hora': emp.coste_hora, 'Horas totales': 0, 'Base': 0, 'Plus nocturnidad': 0, 'Plus festivo': 0, 'Total bruto': 0 };
     porEmp[emp.id]['Horas totales'] += a.horas; porEmp[emp.id]['Base'] += c.base; porEmp[emp.id]['Plus nocturnidad'] += c.plusN; porEmp[emp.id]['Plus festivo'] += c.plusF; porEmp[emp.id]['Total bruto'] += c.total;
-  });
+  });;
+    const c = calcularCoste(a, emp, !!state.festivos[a.fecha]);
   const empArr = Object.values(porEmp).sort((a, b) => b['Total bruto'] - a['Total bruto']);
   empArr.forEach(e => { ['Horas totales', 'Base', 'Plus nocturnidad', 'Plus festivo', 'Total bruto'].forEach(k => e[k] = parseFloat(e[k].toFixed(2))); });
   const wsEmp = empArr.length > 0 ? XLSX.utils.json_to_sheet(empArr) : XLSX.utils.aoa_to_sheet([['Sin asignaciones']]);
@@ -2418,15 +2433,6 @@ function exportarExcelMes() {
   XLSX.utils.book_append_sheet(wb, wsEmp, 'Por empleado');
   XLSX.utils.book_append_sheet(wb, wsDet, 'Detalle diario');
   XLSX.writeFile(wb, `${nombreArchivo('mes_gestoria', prefijo)}.xlsx`);
-  toast('Excel generado', 'success');
-}
-
-function exportarCSVMes() {
-  const cur = state.cursorMes;
-  const year = cur.getFullYear(); const mes = cur.getMonth();
-  const prefijo = `${year}-${String(mes + 1).padStart(2, '0')}`;
-  const outlet = ctxOutlet();
-  const lines = [['fecha', 'local', 'departamento', 'empleado', 'puesto', 'turno', 'horas', 'base', 'plus_noct', 'plus_fest', 'festivo', 'total']];
   planificacionCtx().filter(a => a.fecha.startsWith(prefijo)).sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(a => {
     const emp = state.empleados.find(e => e.id === a.empleado_id); if (!emp) return;
     const esFest = !!state.festivos[a.fecha]; const c = calcularCoste(a, emp, esFest);
