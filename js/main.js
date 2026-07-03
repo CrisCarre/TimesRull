@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js
+ * Planificación Hotel — main.js V5
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -1015,15 +1015,17 @@ function renderModalDia(fecha, draft) {
             ${draft.length > 0 ? `<button class="btn-sec" id="btn-guardar-plantilla">Guardar como plantilla</button>` : ''}
           </div>
           ${tablaHTML}
-          ${disponibles.length > 0 ? `
-            <div class="add-empleado">
-              <select id="sel-add-emp">${addOpts}</select>
-              ${noDispCount > 0 ? `<div class="muted-small">${noDispCount} empleado${noDispCount > 1 ? 's' : ''} no disponible${noDispCount > 1 ? 's' : ''} este día</div>` : ''}
-            </div>`: ''}
-          <div class="totales-dia">
-            <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
-            <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
-            <div class="total-grande"><span>TOTAL DÍA:</span><strong>${divisa(totalPersonal + fijo)}</strong></div>
+          <div class="dia-footer-row">
+            ${disponibles.length > 0 ? `
+              <div class="add-empleado">
+                <select id="sel-add-emp">${addOpts}</select>
+                ${noDispCount > 0 ? `<div class="muted-small">${noDispCount} empleado${noDispCount > 1 ? 's' : ''} no disponible${noDispCount > 1 ? 's' : ''} este día</div>` : ''}
+              </div>`: '<div></div>'}
+            <div class="totales-dia">
+              <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
+              <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
+              <div class="total-grande"><span>TOTAL DÍA:</span><strong>${divisa(totalPersonal + fijo)}</strong></div>
+            </div>
           </div>
         </div>
         <div class="modal-foot">
