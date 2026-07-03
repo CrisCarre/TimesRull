@@ -1,5 +1,5 @@
 /**
- * Planificación Hotel — main.js V5
+ * Planificación Hotel — main.js VersionEstable
  * Punto de entrada único. Contiene todos los módulos en orden de dependencia:
  *
  *  1. config.js          — Supabase, estado global, constantes de turnos
@@ -384,11 +384,6 @@ function totalDia(fecha) {
 /* =====================================================================
    AVISOS
    ===================================================================== */
-function puestoIgual(a, b) {
-  if (!a || !b) return a === b;
-  const norm = s => s.toLowerCase().trim().replace(/[oa]s?$/, '');
-  return norm(a) === norm(b);
-}
 function avisosDia(fecha) {
   const out = [];
   const asigs = asignacionesDe(fecha);
@@ -404,7 +399,7 @@ function avisosDia(fecha) {
   state.reglasMinimo.filter(r => r.dia_semana === dow).forEach(regla => {
     const cumplido = asigs.filter(a => {
       if (a.turno !== regla.turno) return false;
-      if (regla.puesto) { const e = empById[a.empleado_id]; return e && puestoIgual(e.puesto, regla.puesto); }
+      if (regla.puesto) { const e = empById[a.empleado_id]; return e && e.puesto === regla.puesto; }
       return true;
     }).length;
     if (cumplido < regla.minimo) {
@@ -1015,17 +1010,15 @@ function renderModalDia(fecha, draft) {
             ${draft.length > 0 ? `<button class="btn-sec" id="btn-guardar-plantilla">Guardar como plantilla</button>` : ''}
           </div>
           ${tablaHTML}
-          <div class="dia-footer-row">
-            ${disponibles.length > 0 ? `
-              <div class="add-empleado">
-                <select id="sel-add-emp">${addOpts}</select>
-                ${noDispCount > 0 ? `<div class="muted-small">${noDispCount} empleado${noDispCount > 1 ? 's' : ''} no disponible${noDispCount > 1 ? 's' : ''} este día</div>` : ''}
-              </div>`: '<div></div>'}
-            <div class="totales-dia">
-              <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
-              <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
-              <div class="total-grande"><span>TOTAL DÍA:</span><strong>${divisa(totalPersonal + fijo)}</strong></div>
-            </div>
+          ${disponibles.length > 0 ? `
+            <div class="add-empleado">
+              <select id="sel-add-emp">${addOpts}</select>
+              ${noDispCount > 0 ? `<div class="muted-small">${noDispCount} empleado${noDispCount > 1 ? 's' : ''} no disponible${noDispCount > 1 ? 's' : ''} este día</div>` : ''}
+            </div>`: ''}
+          <div class="totales-dia">
+            <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
+            <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
+            <div class="total-grande"><span>TOTAL DÍA:</span><strong>${divisa(totalPersonal + fijo)}</strong></div>
           </div>
         </div>
         <div class="modal-foot">
