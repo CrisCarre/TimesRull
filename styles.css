@@ -1,5 +1,5 @@
 /* ============================================================
-   PALETA — edita aquí para cambiar todo el tema VERSION NIDIEA
+   PALETA — edita aquí para cambiar todo el tema
    #122c30  oscuro/base
    #146385  azul medio
    #e39915  dorado
@@ -39,10 +39,10 @@
   --shadow: 0 1px 3px rgba(18, 44, 48, 0.08);
 
   /* DEPARTAMENTOS */
-  --foh-bg: #d4eaf5;
-  --foh-text: #146385;
-  --boh-bg: #fdf3d8;
-  --boh-text: #8a5c00;
+  --foh-bg: #dbeafe;
+  --foh-text: #1d4ed8;
+  --boh-bg: #fce7f3;
+  --boh-text: #9d174d;
 }
 
 * {
@@ -2443,29 +2443,4 @@ main {
 /* ============ FIX BOTÓN + DISPONIBILIDAD ============ */
 .disp-add-btn {
   background: #146385 !important;
-}
-
-/* ============ FIX SELECT OPTIONS ============ */
-.ctx-select option {
-  background: white !important;
-  color: #122c30 !important;
-}
-
-/* ============ FIX DEPT BADGES ACTIVOS ============ */
-.dept-badge.active-foh {
-  background: #146385 !important;
-  color: white !important;
-  border-color: #146385 !important;
-}
-
-.dept-badge.active-boh {
-  background: #e39915 !important;
-  color: white !important;
-  border-color: #e39915 !important;
-}
-
-.dept-badge.active-all {
-  background: #122c30 !important;
-  color: white !important;
-  border-color: #122c30 !important;
 }
