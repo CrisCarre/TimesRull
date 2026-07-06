@@ -900,6 +900,7 @@ function renderCalendario(soloLectura = false) {
     const avisos = esEmpleado ? [] : avisosDia(f);
     const nivelAv = esEmpleado ? null : nivelMaximoAvisos(avisos);
     const pendiente = esEmpleado ? cambioPendienteDe(f, state.empleadoId) : null;
+    const pendCountDia = esEmpleado ? 0 : cambiosPendientes().filter(c => c.fecha === f).length;
     cellsHTML += `
       <div class="cal-day ${esFinde ? 'weekend' : ''} ${esFestivo ? 'festivo' : ''}" data-fecha="${f}">
         <div class="cal-day-num">
@@ -908,6 +909,7 @@ function renderCalendario(soloLectura = false) {
             ${esFestivo ? `<span class="fest-tag" title="${escapeHtml(state.festivos[f])}">★</span>` : ''}
             ${nivelAv ? `<span class="aviso-tag aviso-${nivelAv}" title="${avisos.length} aviso(s)">!</span>` : ''}
             ${noDispCount > 0 ? `<span class="disp-tag">${noDispCount}</span>` : ''}
+            ${pendCountDia > 0 ? `<span class="disp-tag" style="background:#f59e0b" title="${pendCountDia} solicitud(es) de cambio pendiente(s)">🔔${pendCountDia}</span>` : ''}
             ${pendiente ? `<span class="disp-tag" style="background:var(--color-alerta)" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
           </span>
         </div>
@@ -1053,6 +1055,24 @@ function renderModalDia(fecha, draft) {
           <button class="modal-x" id="modal-cerrar">×</button>
         </div>
         <div class="modal-body">
+          ${(() => {
+      const pendDia = cambiosPendientes().filter(c => c.fecha === fecha);
+      if (pendDia.length === 0) return '';
+      const empByIdLocal = empById;
+      return `<div class="avisos-box" style="background:#fffbeb;border-color:#fde68a">
+              ${pendDia.map(c => {
+        const e = empByIdLocal[c.empleado_id];
+        const detalle = c.tipo === 'eliminar' ? 'Quitar turno' : `${c.turno}${c.hora_inicio && c.hora_fin ? ` · ${c.hora_inicio}→${c.hora_fin}` : ''} (${c.horas}h)`;
+        return `<div class="aviso-line" style="justify-content:space-between;display:flex;align-items:center;gap:10px;color:#92400e">
+                  <span>⏳ <strong>${escapeHtml(e ? e.nombre : '—')}</strong> solicita: ${escapeHtml(detalle)}</span>
+                  <span style="white-space:nowrap">
+                    <button class="btn-sec" data-aprobar-dia="${c.id}" style="margin-right:6px">✓ Aprobar</button>
+                    <button class="btn-sec btn-danger" data-rechazar-dia="${c.id}">✕ Rechazar</button>
+                  </span>
+                </div>`;
+      }).join('')}
+            </div>`;
+    })()}
           ${avisos.length > 0 ? `<div class="avisos-box">${avisos.map(av => `<div class="aviso-line aviso-${av.nivel}">⚠ ${escapeHtml(av.msg)}</div>`).join('')}</div>` : ''}
           <div class="acciones-dia">
             <button class="btn-sec" id="btn-toggle-festivo">${esFestivo ? 'Quitar festivo' : 'Marcar como festivo'}</button>
@@ -1089,6 +1109,8 @@ function renderModalDia(fecha, draft) {
   document.getElementById('btn-copiar-anterior').addEventListener('click', () => copiarSemanaAnterior(fecha, draft));
   const btnGP = document.getElementById('btn-guardar-plantilla');
   if (btnGP) btnGP.addEventListener('click', () => guardarComoPlantilla(draft));
+  document.querySelectorAll('[data-aprobar-dia]').forEach(b => b.addEventListener('click', () => aprobarCambio(parseInt(b.dataset.aprobarDia), () => abrirModalDia(fecha))));
+  document.querySelectorAll('[data-rechazar-dia]').forEach(b => b.addEventListener('click', () => rechazarCambio(parseInt(b.dataset.rechazarDia), () => abrirModalDia(fecha))));
 
   document.querySelectorAll('select[data-field], input[data-field]').forEach(el => {
     el.addEventListener('change', () => {
@@ -1247,7 +1269,7 @@ function renderSemana(soloLectura = false) {
       const f = fechaISO(d);
       const a = state.planificacion.find(x => x.fecha === f && x.empleado_id === emp.id);
       const noDisp = empleadoNoDisponible(emp.id, f);
-      const pendiente = esEmpleado ? cambioPendienteDe(f, emp.id) : null;
+      const pendiente = cambioPendienteDe(f, emp.id);
       return { f, a, noDisp, pendiente };
     });
     let horas = 0, total = 0;
@@ -1592,7 +1614,7 @@ function abrirPanelCambios() {
   document.querySelectorAll('[data-rechazar]').forEach(b => b.addEventListener('click', () => rechazarCambio(parseInt(b.dataset.rechazar))));
 }
 
-async function aprobarCambio(id) {
+async function aprobarCambio(id, onDone) {
   const cambio = state.cambiosTurno.find(c => c.id === id); if (!cambio) return;
   try {
     if (cambio.tipo === 'eliminar') {
@@ -1619,16 +1641,20 @@ async function aprobarCambio(id) {
     const { error: delErr } = await supabase.from('cambios_turno').delete().eq('id', id);
     if (delErr) throw delErr;
     state.cambiosTurno = state.cambiosTurno.filter(c => c.id !== id);
-    abrirPanelCambios(); render(); toast('Cambio aprobado', 'success');
+    render();
+    if (onDone) onDone(); else abrirPanelCambios();
+    toast('Cambio aprobado', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
-async function rechazarCambio(id) {
+async function rechazarCambio(id, onDone) {
   try {
     const { error } = await supabase.from('cambios_turno').delete().eq('id', id);
     if (error) throw error;
     state.cambiosTurno = state.cambiosTurno.filter(c => c.id !== id);
-    abrirPanelCambios(); render(); toast('Solicitud rechazada', 'success');
+    render();
+    if (onDone) onDone(); else abrirPanelCambios();
+    toast('Solicitud rechazada', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
