@@ -723,6 +723,74 @@ main {
   z-index: 100;
 }
 
+.btn-cambios-badge {
+  background: white;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.btn-cambios-badge:hover {
+  border-color: var(--color-primario);
+}
+
+.cambios-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.cambios-dropdown {
+  position: absolute;
+  top: 58px;
+  right: 16px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 70vh;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: dropDown 0.18s ease-out;
+}
+
+@keyframes dropDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cambios-dropdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cambios-dropdown-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.cambios-dropdown-body {
+  padding: 12px 18px 18px;
+  overflow-y: auto;
+}
+
 .modal {
   background: white;
   border-radius: 12px;
@@ -1589,7 +1657,7 @@ main {
   border-radius: 50%;
   font-size: 11px;
   font-weight: 700;
-  color: white;
+  color: #000;
 }
 
 .aviso-tag.aviso-rojo {
@@ -1602,11 +1670,16 @@ main {
 
 .disp-tag {
   background: #6b7280;
-  color: white;
+  color: #000;
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 8px;
   font-weight: 700;
+}
+
+.cal-day.tiene-pendiente {
+  background: #ecfdf5;
+  border-color: #86efac;
 }
 
 .avisos-box {

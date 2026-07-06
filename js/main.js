@@ -562,7 +562,7 @@ function render() {
         <button data-view="disponibilidad" class="${state.view === 'disponibilidad' ? 'active' : ''}">Disponibilidad</button>
         <button data-view="config" class="${state.view === 'config' ? 'active' : ''}">Config</button>
       </nav>
-      <button class="btn-sec" id="btn-cambios-pend" style="margin-right:8px">🔔 Cambios${cambiosPendientes().length > 0 ? ` (${cambiosPendientes().length})` : ''}</button>
+      ${cambiosPendientes().length > 0 ? `<button class="btn-cambios-badge" id="btn-cambios-pend">🔔 Cambios (${cambiosPendientes().length})</button>` : ''}
       <button class="logout" id="btn-logout">Salir</button>
     </header>
 
@@ -586,7 +586,8 @@ function render() {
     b.addEventListener('click', () => { state.view = b.dataset.view; render(); });
   });
   document.getElementById('btn-logout').addEventListener('click', logout);
-  document.getElementById('btn-cambios-pend').addEventListener('click', abrirPanelCambios);
+  const btnCambios = document.getElementById('btn-cambios-pend');
+  if (btnCambios) btnCambios.addEventListener('click', abrirPanelCambios);
 
   const outSel = document.getElementById('ctx-outlet-sel');
   if (outSel) {
@@ -895,22 +896,24 @@ function renderCalendario(soloLectura = false) {
     const esFestivo = !!state.festivos[f];
     const t = esEmpleado ? null : totalDia(f);
     const asigsDia = esEmpleado ? state.planificacion.filter(a => a.fecha === f && a.empleado_id === state.empleadoId) : asignacionesDe(f);
-    const turnosUnicos = [...new Set(asigsDia.map(a => a.turno))];
+    const turnosSet = new Set(asigsDia.map(a => a.turno));
+    const turnosUnicos = turnosOrden.filter(t => turnosSet.has(t));
     const noDispCount = esEmpleado ? 0 : empleadosNoDisponiblesEn(f).length;
     const avisos = esEmpleado ? [] : avisosDia(f);
     const nivelAv = esEmpleado ? null : nivelMaximoAvisos(avisos);
     const pendiente = esEmpleado ? cambioPendienteDe(f, state.empleadoId) : null;
     const pendCountDia = esEmpleado ? 0 : cambiosPendientes().filter(c => c.fecha === f).length;
+    const tienePendiente = esEmpleado ? !!pendiente : pendCountDia > 0;
     cellsHTML += `
-      <div class="cal-day ${esFinde ? 'weekend' : ''} ${esFestivo ? 'festivo' : ''}" data-fecha="${f}">
+      <div class="cal-day ${esFinde ? 'weekend' : ''} ${esFestivo ? 'festivo' : ''} ${tienePendiente ? 'tiene-pendiente' : ''}" data-fecha="${f}">
         <div class="cal-day-num">
           ${d}
           <span class="cal-icons">
             ${esFestivo ? `<span class="fest-tag" title="${escapeHtml(state.festivos[f])}">★</span>` : ''}
             ${nivelAv ? `<span class="aviso-tag aviso-${nivelAv}" title="${avisos.length} aviso(s)">!</span>` : ''}
             ${noDispCount > 0 ? `<span class="disp-tag">${noDispCount}</span>` : ''}
-            ${pendCountDia > 0 ? `<span class="disp-tag" style="background:#16a34a" title="${pendCountDia} solicitud(es) de cambio pendiente(s)">🔔${pendCountDia}</span>` : ''}
-            ${pendiente ? `<span class="disp-tag" style="background:#16a34a" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
+            ${pendCountDia > 0 ? `<span class="disp-tag" style="background:#86efac" title="${pendCountDia} solicitud(es) de cambio pendiente(s)">🔔${pendCountDia}</span>` : ''}
+            ${pendiente ? `<span class="disp-tag" style="background:#86efac" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
           </span>
         </div>
         ${esEmpleado ? '' : (t ? `<div class="cal-day-cost-pill">${divisa(t.total)}</div>` : '')}
@@ -1574,16 +1577,17 @@ async function cancelarSolicitud(id) {
    ===================================================================== */
 function abrirPanelCambios() {
   const pendientes = cambiosPendientes().slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (pendientes.length === 0) return;
   const empById = {}; state.empleados.forEach(e => empById[e.id] = e);
 
   document.getElementById('modal-root').innerHTML = `
-    <div class="modal-backdrop"><div class="modal">
-      <div class="modal-head">
-        <div><h3>Solicitudes de cambio</h3><div class="modal-head-sub"><span>${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}</span></div></div>
-        <button class="modal-x" id="modal-cerrar">×</button>
-      </div>
-      <div class="modal-body">
-        ${pendientes.length === 0 ? '<div class="empty-state">No hay solicitudes pendientes</div>' : `
+    <div class="cambios-dropdown-backdrop" id="cambios-backdrop">
+      <div class="cambios-dropdown">
+        <div class="cambios-dropdown-head">
+          <h3>Solicitudes de cambio <span class="muted-small">(${pendientes.length})</span></h3>
+          <button class="modal-x" id="modal-cerrar">×</button>
+        </div>
+        <div class="cambios-dropdown-body">
           <table class="tabla-dia">
             <thead><tr><th>Empleado</th><th>Fecha</th><th>Cambio solicitado</th><th></th></tr></thead>
             <tbody>
@@ -1601,15 +1605,13 @@ function abrirPanelCambios() {
                 </tr>`;
   }).join('')}
             </tbody>
-          </table>`}
+          </table>
+        </div>
       </div>
-      <div class="modal-foot">
-        <button class="btn-sec" id="btn-cancelar">Cerrar</button>
-      </div>
-    </div></div>`;
+    </div>`;
 
   document.getElementById('modal-cerrar').addEventListener('click', cerrarModal);
-  document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
+  document.getElementById('cambios-backdrop').addEventListener('click', (e) => { if (e.target.id === 'cambios-backdrop') cerrarModal(); });
   document.querySelectorAll('[data-aprobar]').forEach(b => b.addEventListener('click', () => aprobarCambio(parseInt(b.dataset.aprobar))));
   document.querySelectorAll('[data-rechazar]').forEach(b => b.addEventListener('click', () => rechazarCambio(parseInt(b.dataset.rechazar))));
 }
