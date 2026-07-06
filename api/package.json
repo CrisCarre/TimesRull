@@ -2,6 +2,7 @@
   "name": "timesrull-api",
   "version": "1.0.0",
   "dependencies": {
-    "pg": "^8.11.0"
+    "pg": "^8.11.0",
+    "jsonwebtoken": "^9.0.2"
   }
 }

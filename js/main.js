@@ -23,12 +23,22 @@
 const API_URL = 'https://times-rull.vercel.app/api';
 
 async function apiCall(body) {
+  const token = sessionStorage.getItem('timesrull_token');
   const res = await fetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   const json = await res.json();
+  if (res.status === 401 && body.action !== 'login') {
+    sessionStorage.removeItem('timesrull_user');
+    sessionStorage.removeItem('timesrull_token');
+    renderLogin('Tu sesión ha caducado, vuelve a iniciar sesión');
+    throw new Error('Sesión caducada');
+  }
   if (!res.ok || json.error) throw new Error(json.error || 'Error de API');
   return json;
 }
@@ -38,13 +48,15 @@ const supabase = {
   auth: {
     getSession: async () => {
       const user = sessionStorage.getItem('timesrull_user');
-      return { data: { session: user ? { user: JSON.parse(user) } : null } };
+      const token = sessionStorage.getItem('timesrull_token');
+      return { data: { session: (user && token) ? { user: JSON.parse(user) } : null } };
     },
     signInWithPassword: async ({ email, password }) => {
       try {
         const json = await apiCall({ action: 'login', data: { email, password } });
-        if (json.user) {
+        if (json.user && json.token) {
           sessionStorage.setItem('timesrull_user', JSON.stringify(json.user));
+          sessionStorage.setItem('timesrull_token', json.token);
           return { data: { user: json.user }, error: null };
         }
         return { data: null, error: { message: json.error || 'Email o contraseña incorrectos' } };
@@ -54,6 +66,7 @@ const supabase = {
     },
     signOut: async () => {
       sessionStorage.removeItem('timesrull_user');
+      sessionStorage.removeItem('timesrull_token');
       return { error: null };
     },
   },
@@ -117,6 +130,7 @@ const state = {
   disponibilidad: [],
   plantillas: [],
   reglasMinimo: [],
+  cambiosTurno: [],
   /* context */
   view: 'overview',
   cursorMes: null,
@@ -249,6 +263,20 @@ async function cargarTodo() {
     state.outlets = outRes.data;
     state.outletEmpleados = oeRes.data;
 
+    try {
+      const ctRes = await supabase.from('cambios_turno').select('*');
+      if (ctRes.error) throw ctRes.error;
+      state.cambiosTurno = ctRes.data.map(c => ({
+        ...c,
+        fecha: String(c.fecha).slice(0, 10),
+        empleado_id: parseInt(c.empleado_id, 10),
+        horas: c.horas != null ? parseFloat(c.horas) : null,
+      }));
+    } catch (e) {
+      console.warn('No se pudo cargar cambios_turno (¿existe la tabla en la base de datos?)', e);
+      state.cambiosTurno = [];
+    }
+
     procesarTurnos();
     document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#0f766e');
     document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
@@ -327,6 +355,12 @@ function asignacionesDe(fecha) {
   const f = String(fecha).slice(0, 10);
   return state.planificacion.filter(a => String(a.fecha).slice(0, 10) === f && emps.has(a.empleado_id));
 }
+
+/* =====================================================================
+   SOLICITUDES DE CAMBIO (empleados)
+   ===================================================================== */
+function cambiosPendientes() { return state.cambiosTurno.filter(c => c.estado === 'pendiente'); }
+function cambioPendienteDe(fecha, empId) { return cambiosPendientes().find(c => c.fecha === fecha && c.empleado_id === empId); }
 
 /** Planificación completa filtrada por contexto (para resumen mes) */
 function planificacionCtx() {
@@ -528,6 +562,7 @@ function render() {
         <button data-view="disponibilidad" class="${state.view === 'disponibilidad' ? 'active' : ''}">Disponibilidad</button>
         <button data-view="config" class="${state.view === 'config' ? 'active' : ''}">Config</button>
       </nav>
+      <button class="btn-sec" id="btn-cambios-pend" style="margin-right:8px">🔔 Cambios${cambiosPendientes().length > 0 ? ` (${cambiosPendientes().length})` : ''}</button>
       <button class="logout" id="btn-logout">Salir</button>
     </header>
 
@@ -551,6 +586,7 @@ function render() {
     b.addEventListener('click', () => { state.view = b.dataset.view; render(); });
   });
   document.getElementById('btn-logout').addEventListener('click', logout);
+  document.getElementById('btn-cambios-pend').addEventListener('click', abrirPanelCambios);
 
   const outSel = document.getElementById('ctx-outlet-sel');
   if (outSel) {
@@ -593,7 +629,7 @@ function renderEmpleadoView() {
         <span class="user">👤 ${escapeHtml(empNombre)}</span>
       </div>
       <nav class="tabs">
-        <button data-vemp="calendario" class="${viewEmp === 'calendario' ? 'active' : ''}">Calendario</button>
+        <button data-vemp="calendario" class="${viewEmp === 'calendario' ? 'active' : ''}">Mes</button>
         <button data-vemp="semana" class="${viewEmp === 'semana' ? 'active' : ''}">Semana</button>
         <button data-vemp="disponibilidad" class="${viewEmp === 'disponibilidad' ? 'active' : ''}">Mi disponibilidad</button>
       </nav>
@@ -839,11 +875,12 @@ function renderCalendario(soloLectura = false) {
   let inicioOffset = primer.getDay() - 1;
   if (inicioOffset < 0) inicioOffset = 6;
   const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const esEmpleado = state.rol === 'empleado';
 
   let totalMes = 0;
-  for (let d = 1; d <= diasMes; d++) { const t = totalDia(fechaISO(new Date(year, mes, d))); if (t) totalMes += t.total; }
+  if (!esEmpleado) { for (let d = 1; d <= diasMes; d++) { const t = totalDia(fechaISO(new Date(year, mes, d))); if (t) totalMes += t.total; } }
 
-  const presupuesto = presupuestoCtx();
+  const presupuesto = esEmpleado ? 0 : presupuestoCtx();
   const alertaPct = parseFloat(state.config.ALERTA_PORCENTAJE || 90);
   const pct = presupuesto > 0 ? (totalMes / presupuesto) * 100 : 0;
   let estadoBudget = pct >= 100 ? 'over' : pct >= alertaPct ? 'warn' : 'ok';
@@ -856,11 +893,13 @@ function renderCalendario(soloLectura = false) {
     const dow = fechaObj.getDay();
     const esFinde = dow === 0 || dow === 6;
     const esFestivo = !!state.festivos[f];
-    const t = totalDia(f);
-    const turnosUnicos = [...new Set(asignacionesDe(f).map(a => a.turno))];
-    const noDispCount = empleadosNoDisponiblesEn(f).length;
-    const avisos = avisosDia(f);
-    const nivelAv = nivelMaximoAvisos(avisos);
+    const t = esEmpleado ? null : totalDia(f);
+    const asigsDia = esEmpleado ? state.planificacion.filter(a => a.fecha === f && a.empleado_id === state.empleadoId) : asignacionesDe(f);
+    const turnosUnicos = [...new Set(asigsDia.map(a => a.turno))];
+    const noDispCount = esEmpleado ? 0 : empleadosNoDisponiblesEn(f).length;
+    const avisos = esEmpleado ? [] : avisosDia(f);
+    const nivelAv = esEmpleado ? null : nivelMaximoAvisos(avisos);
+    const pendiente = esEmpleado ? cambioPendienteDe(f, state.empleadoId) : null;
     cellsHTML += `
       <div class="cal-day ${esFinde ? 'weekend' : ''} ${esFestivo ? 'festivo' : ''}" data-fecha="${f}">
         <div class="cal-day-num">
@@ -869,12 +908,13 @@ function renderCalendario(soloLectura = false) {
             ${esFestivo ? `<span class="fest-tag" title="${escapeHtml(state.festivos[f])}">★</span>` : ''}
             ${nivelAv ? `<span class="aviso-tag aviso-${nivelAv}" title="${avisos.length} aviso(s)">!</span>` : ''}
             ${noDispCount > 0 ? `<span class="disp-tag">${noDispCount}</span>` : ''}
+            ${pendiente ? `<span class="disp-tag" style="background:var(--color-alerta)" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
           </span>
         </div>
         <div class="cal-day-shifts">
           ${turnosUnicos.map(tt => `<span class="turno-pill" style="background:${turnoColors[tt] || '#888'}">${tt}</span>`).join('')}
         </div>
-        ${t ? `<div class="cal-day-cost">${divisa(t.total)}</div>` : `<div class="cal-day-cost empty">—</div>`}
+        ${esEmpleado ? '' : (t ? `<div class="cal-day-cost">${divisa(t.total)}</div>` : `<div class="cal-day-cost empty">—</div>`)}
       </div>`;
   }
 
@@ -884,7 +924,7 @@ function renderCalendario(soloLectura = false) {
       <h2>${meses[mes]} ${year}</h2>
       <button class="nav-mes" id="next-mes">›</button>
     </div>
-    ${presupuesto > 0 ? `
+    ${!esEmpleado && presupuesto > 0 ? `
       <div class="budget-bar budget-${estadoBudget}">
         <div class="budget-info">
           <span>Coste: <strong>${divisa(totalMes)}</strong></span>
@@ -1188,6 +1228,7 @@ function renderSemana(soloLectura = false) {
   const tituloSemana = `${lunes.getDate()} ${meses[lunes.getMonth()]} – ${finSem.getDate()} ${meses[finSem.getMonth()]} ${finSem.getFullYear()}`;
   const empCtx = empleadosEnContexto();
   const outlet = ctxOutlet();
+  const esEmpleado = state.rol === 'empleado';
 
   let totalSemana = 0;
   const totalesPorDia = dias.map(d => { const t = totalDia(fechaISO(d)); const v = t ? t.total : 0; totalSemana += v; return v; });
@@ -1201,11 +1242,13 @@ function renderSemana(soloLectura = false) {
   const dowLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   const renderEmpRows = (emps) => emps.map(emp => {
+    const esPropia = esEmpleado && emp.id === state.empleadoId;
     const cells = dias.map(d => {
       const f = fechaISO(d);
       const a = state.planificacion.find(x => x.fecha === f && x.empleado_id === emp.id);
       const noDisp = empleadoNoDisponible(emp.id, f);
-      return { f, a, noDisp };
+      const pendiente = esEmpleado ? cambioPendienteDe(f, emp.id) : null;
+      return { f, a, noDisp, pendiente };
     });
     let horas = 0, total = 0;
     cells.forEach(c => { if (c.a) { horas += c.a.horas; total += calcularCoste(c.a, emp, !!state.festivos[c.f]).total; } });
@@ -1213,14 +1256,15 @@ function renderSemana(soloLectura = false) {
       <td class="emp-col"><strong>${escapeHtml(emp.nombre)}</strong><span class="puesto">${escapeHtml(emp.puesto || '')}</span></td>
       ${cells.map(c => {
       const dow = parseISO(c.f).getDay(); const finde = dow === 0 || dow === 6; const fest = !!state.festivos[c.f];
-      return `<td class="cell-sem ${c.noDisp ? 'cell-disp' : ''}" data-fecha="${c.f}" data-emp="${emp.id}">
+      const clicable = !esEmpleado || esPropia;
+      return `<td class="cell-sem ${c.noDisp ? 'cell-disp' : ''} ${esEmpleado && !esPropia ? 'cell-ajena' : ''}" data-fecha="${c.f}" data-emp="${emp.id}" data-clicable="${clicable ? '1' : '0'}">
           ${c.noDisp ? `<span class="disp-mini" style="background:${tipoDispColor(c.noDisp.tipo)}" title="${tipoDispLabel(c.noDisp.tipo)}">${tipoDispLabel(c.noDisp.tipo)[0]}</span>`
           : c.a ? `<span class="turno-pill" style="background:${turnoColors[c.a.turno] || '#888'}">${c.a.turno}</span><br><small>${c.a.horas}h</small>`
-            : `<span class="cell-empty">+</span>`}
+            : `<span class="cell-empty">${clicable ? '+' : ''}</span>`}
+          ${c.pendiente ? `<span class="disp-mini" style="background:var(--color-alerta)" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
         </td>`;
     }).join('')}
-      <td class="t-right">${horas.toFixed(1)}</td>
-      <td class="t-right">${divisa(total)}</td>
+      ${esEmpleado ? '' : `<td class="t-right">${horas.toFixed(1)}</td><td class="t-right">${divisa(total)}</td>`}
     </tr>`;
   }).join('');
 
@@ -1239,32 +1283,37 @@ function renderSemana(soloLectura = false) {
       <h2>Semana ${tituloSemana}</h2>
       <button class="nav-mes" id="next-sem">›</button>
       <button class="btn-sec" id="hoy-sem" style="margin-left:8px">Hoy</button>
-      <button class="btn-pri" id="btn-pdf-sem" style="margin-left:auto">📄 PDF</button>
+      ${esEmpleado ? '' : `<button class="btn-pri" id="btn-pdf-sem" style="margin-left:auto">📄 PDF</button>`}
     </div>
     <div class="tabla-semana-wrap">
       <table class="tabla-semana">
         <thead><tr>
           <th class="emp-col">Empleado</th>
           ${dias.map(d => { const f = fechaISO(d); const fest = state.festivos[f]; const dow = d.getDay(); const finde = dow === 0 || dow === 6; return `<th class="${finde ? 'col-finde' : ''} ${fest ? 'col-festivo' : ''}">${dowLabels[dow]}<br><small>${d.getDate()}</small></th>`; }).join('')}
-          <th>Σ h</th><th>Σ €</th>
+          ${esEmpleado ? '' : '<th>Σ h</th><th>Σ €</th>'}
         </tr></thead>
         <tbody>${deptRows}</tbody>
-        <tfoot><tr>
+        ${esEmpleado ? '' : `<tfoot><tr>
           <td class="emp-col"><strong>Total día</strong></td>
           ${totalesPorDia.map(v => `<td class="t-right"><strong>${v > 0 ? divisa(v) : '—'}</strong></td>`).join('')}
           <td></td><td class="t-right"><strong>${divisa(totalSemana)}</strong></td>
-        </tr></tfoot>
+        </tr></tfoot>`}
       </table>
     </div>
-    <p class="muted-small">Click en una celda para editar.</p>`;
+    <p class="muted-small">${esEmpleado ? 'Click en tu fila para solicitar un cambio de turno.' : 'Click en una celda para editar.'}</p>`;
 
   document.getElementById('prev-sem').addEventListener('click', () => { state.cursorSemana = sumarDiasDate(state.cursorSemana, -7); render(); });
   document.getElementById('next-sem').addEventListener('click', () => { state.cursorSemana = sumarDiasDate(state.cursorSemana, 7); render(); });
   document.getElementById('hoy-sem').addEventListener('click', () => { state.cursorSemana = lunesDe(new Date()); render(); });
-  document.getElementById('btn-pdf-sem').addEventListener('click', exportarPDFSemana);
+  const btnPdf = document.getElementById('btn-pdf-sem');
+  if (btnPdf) btnPdf.addEventListener('click', exportarPDFSemana);
 
   document.querySelectorAll('.cell-sem').forEach(td => {
-    td.addEventListener('click', () => abrirModalCelda(td.dataset.fecha, parseInt(td.dataset.emp)));
+    if (td.dataset.clicable !== '1') return;
+    td.addEventListener('click', () => {
+      if (esEmpleado) abrirModalCeldaEmpleado(td.dataset.fecha, parseInt(td.dataset.emp));
+      else abrirModalCelda(td.dataset.fecha, parseInt(td.dataset.emp));
+    });
   });
 }
 
@@ -1373,6 +1422,213 @@ async function quitarCelda(fecha, empId) {
     if (error) throw error;
     state.planificacion = state.planificacion.filter(a => a.id !== existente.id);
     cerrarModal(); render(); toast('Quitado', 'success');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+/* =====================================================================
+   MODAL DE CELDA — EMPLEADO (solicitud de cambio, requiere aprobación)
+   ===================================================================== */
+function abrirModalCeldaEmpleado(fecha, empId) {
+  const emp = state.empleados.find(e => e.id === empId); if (!emp) return;
+  const actual = state.planificacion.find(a => a.fecha === fecha && a.empleado_id === empId);
+  const pendiente = cambioPendienteDe(fecha, empId);
+  const turnoBase = (pendiente && pendiente.turno) || actual?.turno || (emp.turnos_permitidos.split('|')[0] || turnosOrden[0]);
+  let defIni = (pendiente ? pendiente.hora_inicio : actual?.hora_inicio) || '';
+  let defFin = (pendiente ? pendiente.hora_fin : actual?.hora_fin) || '';
+  if (!defIni && !defFin) { const d = horasDefaultDeTurno(turnoBase); defIni = d.hora_inicio; defFin = d.hora_fin; }
+  const horasCalc = (defIni && defFin) ? calcularHorasRango(defIni, defFin) : (actual?.horas || turnoHoras[turnoBase] || 8);
+  const alertaH = parseFloat(state.config.ALERTA_HORAS_TURNO || 8);
+  const fechaTxt = parseISO(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const esEliminacion = pendiente && pendiente.tipo === 'eliminar';
+
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-backdrop"><div class="modal">
+      <div class="modal-head">
+        <div>
+          <h3>${escapeHtml(emp.nombre)}</h3>
+          <div class="modal-head-sub"><span>${capitalize(fechaTxt)}</span></div>
+        </div>
+        <button class="modal-x" id="modal-cerrar">×</button>
+      </div>
+      <div class="modal-body form-grid">
+        ${pendiente ? `<div class="aviso-line aviso-amarillo">⏳ Ya tienes una solicitud ${esEliminacion ? 'de eliminación' : 'de cambio'} pendiente de aprobación para este día.</div>` : ''}
+        ${!esEliminacion ? `
+        <label>Turno
+          <select id="cell-turno">
+            ${turnosOrden.filter(t => emp.turnos_permitidos.split('|').includes(t))
+        .map(t => `<option value="${t}" ${t === turnoBase ? 'selected' : ''}>${t} – ${escapeHtml(turnoNombres[t])}</option>`).join('')}
+          </select>
+        </label>
+        <label>Horario
+          <div class="horario-wrap" style="margin-top:4px">
+            <input type="time" id="cell-hora-ini" class="time-input" value="${defIni}">
+            <span class="time-sep">→</span>
+            <input type="time" id="cell-hora-fin" class="time-input" value="${defFin}">
+            <span id="cell-horas-auto" class="horas-badge" style="${(defIni && defFin && horasCalc > alertaH) ? 'background:var(--color-alerta)' : ''}">${horasCalc}h</span>
+          </div>
+        </label>` : ''}
+        <p class="muted-small">Tu solicitud quedará pendiente hasta que un director la apruebe.</p>
+      </div>
+      <div class="modal-foot">
+        ${pendiente ? `<button class="btn-sec btn-danger" id="btn-cancelar-sol" style="margin-right:auto">Cancelar solicitud</button>`
+      : actual ? `<button class="btn-sec btn-danger" id="btn-solicitar-quitar" style="margin-right:auto">Solicitar quitar turno</button>` : ''}
+        <button class="btn-sec" id="btn-cancelar">Cerrar</button>
+        ${!esEliminacion ? `<button class="btn-pri" id="btn-guardar">Solicitar cambio</button>` : ''}
+      </div>
+    </div></div>`;
+
+  if (!esEliminacion) {
+    const syncHours = () => {
+      const ini = document.getElementById('cell-hora-ini').value;
+      const fin = document.getElementById('cell-hora-fin').value;
+      const autoEl = document.getElementById('cell-horas-auto');
+      const alerta = parseFloat(state.config.ALERTA_HORAS_TURNO || 8);
+      if (ini && fin) { const h = calcularHorasRango(ini, fin); autoEl.textContent = `${h}h`; autoEl.style.background = h > alerta ? 'var(--color-alerta)' : ''; }
+      else { autoEl.textContent = `${turnoHoras[document.getElementById('cell-turno').value] || 8}h`; autoEl.style.background = 'var(--muted)'; }
+    };
+    document.getElementById('cell-hora-ini').addEventListener('change', syncHours);
+    document.getElementById('cell-hora-fin').addEventListener('change', syncHours);
+    document.getElementById('cell-turno').addEventListener('change', () => {
+      const defs = horasDefaultDeTurno(document.getElementById('cell-turno').value);
+      if (defs.hora_inicio) document.getElementById('cell-hora-ini').value = defs.hora_inicio;
+      if (defs.hora_fin) document.getElementById('cell-hora-fin').value = defs.hora_fin;
+      syncHours();
+    });
+    document.getElementById('btn-guardar').addEventListener('click', () => enviarSolicitudCambio(fecha, empId));
+  }
+  document.getElementById('modal-cerrar').addEventListener('click', cerrarModal);
+  document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
+  if (pendiente) document.getElementById('btn-cancelar-sol').addEventListener('click', () => cancelarSolicitud(pendiente.id));
+  else if (actual) { const b = document.getElementById('btn-solicitar-quitar'); if (b) b.addEventListener('click', () => enviarSolicitudEliminar(fecha, empId)); }
+}
+
+async function enviarSolicitudCambio(fecha, empId) {
+  const turno = document.getElementById('cell-turno').value;
+  const horaIni = document.getElementById('cell-hora-ini').value;
+  const horaFin = document.getElementById('cell-hora-fin').value;
+  const horas = (horaIni && horaFin) ? calcularHorasRango(horaIni, horaFin) : (turnoHoras[turno] || 8);
+  if (horas <= 0) { toast('Las horas deben ser >0', 'error'); return; }
+  const fechaStr = String(fecha).slice(0, 10);
+  const existentePend = cambioPendienteDe(fechaStr, empId);
+  const payload = { fecha: fechaStr, empleado_id: empId, tipo: 'modificar', turno, hora_inicio: horaIni || null, hora_fin: horaFin || null, horas, estado: 'pendiente' };
+  try {
+    if (existentePend) {
+      const { error } = await supabase.from('cambios_turno').update(payload).eq('id', existentePend.id);
+      if (error) throw error;
+      Object.assign(existentePend, payload);
+    } else {
+      const res = await apiCall({ action: 'insert', table: 'cambios_turno', data: payload });
+      if (res.error) throw new Error(res.error);
+      const nuevo = res.data;
+      state.cambiosTurno.push({ ...nuevo, fecha: String(nuevo.fecha).slice(0, 10), empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
+    }
+    cerrarModal(); render(); toast('Solicitud enviada, pendiente de aprobación', 'success');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function enviarSolicitudEliminar(fecha, empId) {
+  const fechaStr = String(fecha).slice(0, 10);
+  const payload = { fecha: fechaStr, empleado_id: empId, tipo: 'eliminar', turno: null, hora_inicio: null, hora_fin: null, horas: null, estado: 'pendiente' };
+  try {
+    const res = await apiCall({ action: 'insert', table: 'cambios_turno', data: payload });
+    if (res.error) throw new Error(res.error);
+    const nuevo = res.data;
+    state.cambiosTurno.push({ ...nuevo, fecha: String(nuevo.fecha).slice(0, 10), empleado_id: parseInt(nuevo.empleado_id, 10) });
+    cerrarModal(); render(); toast('Solicitud de eliminación enviada', 'success');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function cancelarSolicitud(id) {
+  try {
+    const { error } = await supabase.from('cambios_turno').delete().eq('id', id);
+    if (error) throw error;
+    state.cambiosTurno = state.cambiosTurno.filter(c => c.id !== id);
+    cerrarModal(); render(); toast('Solicitud cancelada', 'success');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+/* =====================================================================
+   PANEL DE APROBACIÓN — DIRECTOR
+   ===================================================================== */
+function abrirPanelCambios() {
+  const pendientes = cambiosPendientes().slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const empById = {}; state.empleados.forEach(e => empById[e.id] = e);
+
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-backdrop"><div class="modal">
+      <div class="modal-head">
+        <div><h3>Solicitudes de cambio</h3><div class="modal-head-sub"><span>${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}</span></div></div>
+        <button class="modal-x" id="modal-cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        ${pendientes.length === 0 ? '<div class="empty-state">No hay solicitudes pendientes</div>' : `
+          <table class="tabla-dia">
+            <thead><tr><th>Empleado</th><th>Fecha</th><th>Cambio solicitado</th><th></th></tr></thead>
+            <tbody>
+              ${pendientes.map(c => {
+    const emp = empById[c.empleado_id];
+    const detalle = c.tipo === 'eliminar' ? 'Quitar turno' : `${c.turno}${c.hora_inicio && c.hora_fin ? ` · ${c.hora_inicio}→${c.hora_fin}` : ''} (${c.horas}h)`;
+    return `<tr>
+                  <td>${escapeHtml(emp ? emp.nombre : '—')}</td>
+                  <td>${fmtFecha(c.fecha)}</td>
+                  <td>${escapeHtml(detalle)}</td>
+                  <td style="white-space:nowrap">
+                    <button class="btn-sec" data-aprobar="${c.id}" style="margin-right:6px">✓ Aprobar</button>
+                    <button class="btn-sec btn-danger" data-rechazar="${c.id}">✕ Rechazar</button>
+                  </td>
+                </tr>`;
+  }).join('')}
+            </tbody>
+          </table>`}
+      </div>
+      <div class="modal-foot">
+        <button class="btn-sec" id="btn-cancelar">Cerrar</button>
+      </div>
+    </div></div>`;
+
+  document.getElementById('modal-cerrar').addEventListener('click', cerrarModal);
+  document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
+  document.querySelectorAll('[data-aprobar]').forEach(b => b.addEventListener('click', () => aprobarCambio(parseInt(b.dataset.aprobar))));
+  document.querySelectorAll('[data-rechazar]').forEach(b => b.addEventListener('click', () => rechazarCambio(parseInt(b.dataset.rechazar))));
+}
+
+async function aprobarCambio(id) {
+  const cambio = state.cambiosTurno.find(c => c.id === id); if (!cambio) return;
+  try {
+    if (cambio.tipo === 'eliminar') {
+      const existente = state.planificacion.find(a => a.fecha === cambio.fecha && a.empleado_id === cambio.empleado_id);
+      if (existente) {
+        const { error } = await supabase.from('planificacion').delete().eq('id', existente.id);
+        if (error) throw error;
+        state.planificacion = state.planificacion.filter(a => a.id !== existente.id);
+      }
+    } else {
+      const payload = { turno: cambio.turno, horas: cambio.horas, hora_inicio: cambio.hora_inicio, hora_fin: cambio.hora_fin };
+      const existente = state.planificacion.find(a => a.fecha === cambio.fecha && a.empleado_id === cambio.empleado_id);
+      if (existente) {
+        const { error } = await supabase.from('planificacion').update(payload).eq('id', existente.id);
+        if (error) throw error;
+        Object.assign(existente, payload);
+      } else {
+        const res = await apiCall({ action: 'insert', table: 'planificacion', data: { fecha: cambio.fecha, empleado_id: cambio.empleado_id, ...payload } });
+        if (res.error) throw new Error(res.error);
+        const nuevo = res.data;
+        state.planificacion.push({ ...nuevo, fecha: String(nuevo.fecha).slice(0, 10), empleado_id: parseInt(nuevo.empleado_id, 10), horas: parseFloat(nuevo.horas) });
+      }
+    }
+    const { error: delErr } = await supabase.from('cambios_turno').delete().eq('id', id);
+    if (delErr) throw delErr;
+    state.cambiosTurno = state.cambiosTurno.filter(c => c.id !== id);
+    abrirPanelCambios(); render(); toast('Cambio aprobado', 'success');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function rechazarCambio(id) {
+  try {
+    const { error } = await supabase.from('cambios_turno').delete().eq('id', id);
+    if (error) throw error;
+    state.cambiosTurno = state.cambiosTurno.filter(c => c.id !== id);
+    abrirPanelCambios(); render(); toast('Solicitud rechazada', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
