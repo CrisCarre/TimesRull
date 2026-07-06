@@ -22,6 +22,7 @@ const ALLOWED_TABLES = new Set([
 const TABLAS_EMPLEADO_SELECT_OK = new Set([
   'planificacion', 'disponibilidad', 'festivos', 'outlets',
   'outlet_empleados', 'empleados', 'config', 'cambios_turno',
+  'plantillas', 'reglas_minimo',
 ]);
 // De estas, el resultado se fuerza SIEMPRE a sus propias filas (empleado_id = el suyo)
 const TABLAS_EMPLEADO_SELECT_PROPIO = new Set(['cambios_turno']);
