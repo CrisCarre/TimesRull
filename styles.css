@@ -14,26 +14,40 @@
   --font-size-base: 14px;
 
   /* PALETA BASE */
-  --p1: #122c30;   /* oscuro/base */
-  --p2: #146385;   /* azul medio */
-  --p3: #e39915;   /* dorado */
-  --p4: #eccc5b;   /* amarillo */
-  --p5: #f6eda5;   /* crema claro */
+  --p1: #122c30;
+  /* oscuro/base */
+  --p2: #146385;
+  /* azul medio */
+  --p3: #e39915;
+  /* dorado */
+  --p4: #eccc5b;
+  /* amarillo */
+  --p5: #f6eda5;
+  /* crema claro */
 
   /* COLORES DE LA APP — cambia estos para ajustar el tema */
-  --color-primario: var(--p2);        /* color principal (botones, activos, topbar) */
-  --color-acento: var(--p3);          /* color de acento (badges, highlights) */
-  --color-alerta: #dc2626;            /* errores */
-  --color-warn: var(--p3);            /* avisos */
+  --color-primario: var(--p2);
+  /* color principal (botones, activos, topbar) */
+  --color-acento: var(--p3);
+  /* color de acento (badges, highlights) */
+  --color-alerta: #dc2626;
+  /* errores */
+  --color-warn: var(--p3);
+  /* avisos */
 
   /* FONDO Y SUPERFICIE */
-  --bg: #f0f4f5;                      /* fondo general */
-  --card: #ffffff;                    /* tarjetas */
-  --border: #d9e2e4;                  /* bordes */
+  --bg: #f0f4f5;
+  /* fondo general */
+  --card: #ffffff;
+  /* tarjetas */
+  --border: #d9e2e4;
+  /* bordes */
 
   /* TEXTO */
-  --text: var(--p1);                  /* texto principal */
-  --muted: #4a6a70;                   /* texto secundario */
+  --text: var(--p1);
+  /* texto principal */
+  --muted: #4a6a70;
+  /* texto secundario */
 
   /* SOMBRAS */
   --shadow: 0 1px 3px rgba(18, 44, 48, 0.08);
@@ -82,7 +96,7 @@ body {
 
 .login-logo {
   display: block;
-  max-width: 314px;
+  max-width: 200px;
   height: auto;
   margin: 0 0 8px;
 }
@@ -619,16 +633,15 @@ main {
 }
 
 .cal-day {
-  aspect-ratio: 1;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   transition: all 0.15s;
-  min-height: 80px;
+  min-height: 130px;
 }
 
 .cal-day:hover:not(.empty) {
@@ -639,6 +652,7 @@ main {
 .cal-day.empty {
   border: none;
   cursor: default;
+  min-height: 0;
 }
 
 .cal-day.weekend {
@@ -663,11 +677,30 @@ main {
   font-size: 11px;
 }
 
+.cal-day-cost-pill {
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-alerta);
+  padding: 5px 4px;
+}
+
 .cal-day-shifts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
+  flex-direction: column;
+  gap: 3px;
   flex: 1;
+}
+
+.turno-bar {
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 9px;
+  text-align: left;
 }
 
 .turno-pill {
@@ -676,17 +709,6 @@ main {
   color: white;
   padding: 1px 5px;
   border-radius: 3px;
-}
-
-.cal-day-cost {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-primario);
-  text-align: right;
-}
-
-.cal-day-cost.empty {
-  color: #d1d5db;
 }
 
 /* ============ MODAL ============ */
@@ -1404,6 +1426,15 @@ main {
 
 .cell-sem.cell-disp:hover {
   background: #fee2e2;
+}
+
+.cell-sem.cell-ajena {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.cell-sem.cell-ajena:hover {
+  background: transparent;
 }
 
 .cell-sem small {
@@ -2341,7 +2372,7 @@ main {
     grid-template-columns: 1fr;
   }
 
-  .cal-day-cost {
+  .cal-day-cost-pill {
     font-size: 10px;
   }
 
@@ -2349,6 +2380,7 @@ main {
     display: none;
   }
 }
+
 /* ============ CONFIG SUBTABS ============ */
 .config-subtabs {
   display: flex;
@@ -2411,34 +2443,34 @@ main {
 }
 
 .tabs button {
-  color: rgba(255,255,255,0.7) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
   border-bottom: 3px solid transparent !important;
 }
 
 .tabs button:hover {
   color: white !important;
-  background: rgba(255,255,255,0.08) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .tabs button.active {
   color: var(--p4) !important;
   border-bottom-color: var(--p3) !important;
-  background: rgba(255,255,255,0.05) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .logout {
-  color: rgba(255,255,255,0.6) !important;
-  border: 1px solid rgba(255,255,255,0.2) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
 .logout:hover {
   color: white !important;
-  border-color: rgba(255,255,255,0.5) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 .ctx-strip {
-  background: rgba(255,255,255,0.08) !important;
-  border-color: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .ctx-label {
@@ -2446,9 +2478,8 @@ main {
 }
 
 .ctx-select {
-  background: rgba(255,255,255,0.12) !important;
-  color: white !important;
-  border-color: rgba(255,255,255,0.2) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 .btn-pri {

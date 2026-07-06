@@ -909,14 +909,14 @@ function renderCalendario(soloLectura = false) {
             ${esFestivo ? `<span class="fest-tag" title="${escapeHtml(state.festivos[f])}">★</span>` : ''}
             ${nivelAv ? `<span class="aviso-tag aviso-${nivelAv}" title="${avisos.length} aviso(s)">!</span>` : ''}
             ${noDispCount > 0 ? `<span class="disp-tag">${noDispCount}</span>` : ''}
-            ${pendCountDia > 0 ? `<span class="disp-tag" style="background:#f59e0b" title="${pendCountDia} solicitud(es) de cambio pendiente(s)">🔔${pendCountDia}</span>` : ''}
-            ${pendiente ? `<span class="disp-tag" style="background:var(--color-alerta)" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
+            ${pendCountDia > 0 ? `<span class="disp-tag" style="background:#16a34a" title="${pendCountDia} solicitud(es) de cambio pendiente(s)">🔔${pendCountDia}</span>` : ''}
+            ${pendiente ? `<span class="disp-tag" style="background:#16a34a" title="Solicitud pendiente de aprobación">⏳</span>` : ''}
           </span>
         </div>
+        ${esEmpleado ? '' : (t ? `<div class="cal-day-cost-pill">${divisa(t.total)}</div>` : '')}
         <div class="cal-day-shifts">
-          ${turnosUnicos.map(tt => `<span class="turno-pill" style="background:${turnoColors[tt] || '#888'}">${tt}</span>`).join('')}
+          ${turnosUnicos.map(tt => `<span class="turno-bar" style="background:${turnoColors[tt] || '#888'}">${tt}</span>`).join('')}
         </div>
-        ${esEmpleado ? '' : (t ? `<div class="cal-day-cost">${divisa(t.total)}</div>` : `<div class="cal-day-cost empty">—</div>`)}
       </div>`;
   }
 
