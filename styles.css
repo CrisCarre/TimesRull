@@ -661,7 +661,7 @@ main {
 }
 
 .cal-day.weekend {
-  background: #fafafa;
+  background: var(--muted);
 }
 
 .cal-day.festivo {
@@ -732,19 +732,38 @@ main {
 }
 
 .btn-cambios-badge {
-  background: white;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 13px;
-  font-weight: 600;
+  position: relative;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 19px;
+  line-height: 1;
   cursor: pointer;
-  margin-right: 8px;
+  margin-right: 14px;
+  padding: 4px;
+  border-radius: 6px;
 }
 
 .btn-cambios-badge:hover {
-  border-color: var(--color-primario);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cambios-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
 }
 
 .cambios-dropdown-backdrop {
@@ -1686,8 +1705,8 @@ main {
 }
 
 .cal-day.tiene-pendiente {
-  background: #ecfdf5;
-  border-color: #86efac;
+  background: var(--muted);
+
 }
 
 .avisos-box {
@@ -2559,7 +2578,6 @@ main {
 }
 
 .ctx-select {
-  background: rgba(255, 255, 255, 0.12) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 

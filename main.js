@@ -562,7 +562,7 @@ function render() {
         <button data-view="disponibilidad" class="${state.view === 'disponibilidad' ? 'active' : ''}">Disponibilidad</button>
         <button data-view="config" class="${state.view === 'config' ? 'active' : ''}">Config</button>
       </nav>
-      ${cambiosPendientes().length > 0 ? `<button class="btn-cambios-badge" id="btn-cambios-pend">🔔 Cambios (${cambiosPendientes().length})</button>` : ''}
+      ${cambiosPendientes().length > 0 ? `<button class="btn-cambios-badge" id="btn-cambios-pend" title="${cambiosPendientes().length} solicitud(es) de cambio pendiente(s)">🔔<span class="cambios-count">${cambiosPendientes().length}</span></button>` : ''}
       <button class="logout" id="btn-logout">Salir</button>
     </header>
 
