@@ -53,10 +53,10 @@
   --shadow: 0 1px 3px rgba(18, 44, 48, 0.08);
 
   /* DEPARTAMENTOS */
-  --foh-bg: #122c30;
-  --foh-text: #1d4ed8;
-  --boh-bg: #f6eda5;
-  --boh-text: #9d174d;
+  --foh-bg: #eccc5b;
+  --foh-text: #b5451b;
+  --boh-bg: #b5451b;
+  --boh-text: #eccc5b;
 }
 
 * {
@@ -265,6 +265,7 @@ body {
 .dept-badge.boh {
   background: var(--boh-bg);
   color: var(--boh-text);
+  border-color: #b5451b;
 }
 
 .dept-badge.all {
@@ -979,31 +980,51 @@ main {
   background: white;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 8px;
+  max-height: 140px;
+  overflow-y: auto;
 }
 
-.add-empleado-box select {
-  width: 100%;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  padding: 6px 2px;
-  font-size: 13px;
-  background: transparent;
+.add-emp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.add-emp-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--muted);
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a6a70' stroke-width='1.5' fill='none' fill-rule='evenodd'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 2px center;
+  text-transform: uppercase;
 }
 
-.add-empleado-box select:focus {
-  outline: none;
-  border-bottom-color: var(--color-primario);
+.add-emp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.add-emp-chip {
+  background: var(--bg);
+  color: var(--color-primario);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.add-emp-chip:hover {
+  background: var(--color-primario);
+  color: white;
+  border-color: var(--color-primario);
 }
 
 .totales-dia {

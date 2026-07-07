@@ -79,16 +79,16 @@ const supabase = {
       order: (ord) => apiCall({ action: 'select', table }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
       then: (fn) => apiCall({ action: 'select', table }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
     }),
-    insert: (rows) => ({
-      select: () => ({
-        single: () => apiCall({ action: 'insert', table, data: rows[0] }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
-        then: (fn) => apiCall({ action: 'insert', table, data: rows[0] }).then(r => fn({ data: [r.data], error: null })).catch(e => fn({ data: null, error: e })),
-      }),
-      then: (fn) => {
-        const payload = Array.isArray(rows) ? rows : [rows[0]];
-        return apiCall({ action: 'insert', table, data: payload }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e }));
-      },
-    }),
+    insert: (rows) => {
+      const payload = Array.isArray(rows) ? rows : [rows];
+      return {
+        select: () => ({
+          single: () => apiCall({ action: 'insert', table, data: payload[0] }).then(r => ({ data: r.data, error: null })).catch(e => ({ data: null, error: e })),
+          then: (fn) => apiCall({ action: 'insert', table, data: payload }).then(r => fn({ data: Array.isArray(r.data) ? r.data : [r.data], error: null })).catch(e => fn({ data: null, error: e })),
+        }),
+        then: (fn) => apiCall({ action: 'insert', table, data: payload }).then(r => fn({ data: r.data, error: null })).catch(e => fn({ data: null, error: e })),
+      };
+    },
     update: (data) => ({
       eq: (col, val) => ({
         select: () => ({
@@ -1037,14 +1037,17 @@ function renderModalDia(fecha, draft) {
   const dispFOH = disponibles.filter(e => deptDeEmpleado(e.id) === 'FOH');
   const dispBOH = disponibles.filter(e => deptDeEmpleado(e.id) === 'BOH');
   const dispSIN = disponibles.filter(e => !deptDeEmpleado(e.id));
-  let addOpts = '<option value="">+ Añadir empleado…</option>';
+
+  let addOpts = '';
+  const chip = (e) => `<span class="add-emp-chip" data-emp="${e.id}">${escapeHtml(e.nombre)}</span>`;
   if (outlet) {
-    if (dispFOH.length > 0) addOpts += `<optgroup label="FOH">${dispFOH.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('')}</optgroup>`;
-    if (dispBOH.length > 0) addOpts += `<optgroup label="BOH">${dispBOH.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('')}</optgroup>`;
-    if (dispSIN.length > 0) addOpts += `<optgroup label="Sin departamento">${dispSIN.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)}</option>`).join('')}</optgroup>`;
+    if (dispFOH.length > 0) addOpts += `<div class="add-emp-group"><span class="add-emp-group-label">FOH</span><div class="add-emp-chips">${dispFOH.map(chip).join('')}</div></div>`;
+    if (dispBOH.length > 0) addOpts += `<div class="add-emp-group"><span class="add-emp-group-label">BOH</span><div class="add-emp-chips">${dispBOH.map(chip).join('')}</div></div>`;
+    if (dispSIN.length > 0) addOpts += `<div class="add-emp-group"><span class="add-emp-group-label">Sin depto</span><div class="add-emp-chips">${dispSIN.map(chip).join('')}</div></div>`;
   } else {
-    addOpts += disponibles.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.puesto || '')})</option>`).join('');
+    addOpts += `<div class="add-emp-chips">${disponibles.map(chip).join('')}</div>`;
   }
+  if (disponibles.length === 0) addOpts = '<p class="muted-small">No quedan empleados disponibles para añadir.</p>';
 
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-backdrop">
@@ -1088,10 +1091,10 @@ function renderModalDia(fecha, draft) {
           ${tablaHTML}
           <div class="dia-resumen-row">
             ${disponibles.length > 0 ? `
-            <div class="add-empleado-box">
-              <select id="sel-add-emp">${addOpts}</select>
-              ${noDispCount > 0 ? `<div class="muted-small">${noDispCount} empleado${noDispCount > 1 ? 's' : ''} no disponible${noDispCount > 1 ? 's' : ''} este día</div>` : ''}
-            </div>` : '<div></div>'}
+          <div class="add-empleado-box">
+  ${addOpts}
+  ${noDispCount > 0 ? `<div class="muted-small">...</div>` : ''}
+</div>` : '<div></div>'}
             <div class="totales-dia">
               <div><span>Coste personal:</span><strong>${divisa(totalPersonal)}</strong></div>
               <div><span>Coste fijo diario:</span><strong>${divisa(fijo)}</strong></div>
@@ -1140,14 +1143,16 @@ function renderModalDia(fecha, draft) {
   });
   const sel = document.getElementById('sel-add-emp');
   if (sel) {
-    sel.addEventListener('change', () => {
-      const id = parseInt(sel.value); if (!id) return;
-      const emp = state.empleados.find(e => e.id === id);
-      const turnoDefault = (emp.turnos_permitidos.split('|')[0]) || turnosOrden[0];
-      const defs = horasDefaultDeTurno(turnoDefault);
-      const horas = (defs.hora_inicio && defs.hora_fin) ? calcularHorasRango(defs.hora_inicio, defs.hora_fin) : (turnoHoras[turnoDefault] || 8);
-      draft.push({ fecha, empleado_id: id, turno: turnoDefault, horas, hora_inicio: defs.hora_inicio || '', hora_fin: defs.hora_fin || '' });
-      renderModalDia(fecha, draft);
+    document.querySelectorAll('.add-emp-chip').forEach(chipEl => {
+      chipEl.addEventListener('click', () => {
+        const id = parseInt(chipEl.dataset.emp);
+        const emp = state.empleados.find(e => e.id === id);
+        const turnoDefault = (emp.turnos_permitidos.split('|')[0]) || turnosOrden[0];
+        const defs = horasDefaultDeTurno(turnoDefault);
+        const horas = (defs.hora_inicio && defs.hora_fin) ? calcularHorasRango(defs.hora_inicio, defs.hora_fin) : (turnoHoras[turnoDefault] || 8);
+        draft.push({ fecha, empleado_id: id, turno: turnoDefault, horas, hora_inicio: defs.hora_inicio || '', hora_fin: defs.hora_fin || '' });
+        renderModalDia(fecha, draft);
+      });
     });
   }
 }
