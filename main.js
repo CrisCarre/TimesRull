@@ -528,10 +528,7 @@ function render() {
 
   document.getElementById('root').innerHTML = `
     <header class="topbar">
-      <div class="brand">
-        <strong>${escapeHtml(state.config.NOMBRE_HOTEL || 'Hotel')}</strong>
-        <span class="user">${escapeHtml(state.user?.email || '')}</span>
-      </div>
+     
 
       ${hasOutlets ? `
         <div class="ctx-strip">
@@ -562,7 +559,11 @@ function render() {
         <button data-view="disponibilidad" class="${state.view === 'disponibilidad' ? 'active' : ''}">Disponibilidad</button>
         <button data-view="config" class="${state.view === 'config' ? 'active' : ''}">Config</button>
       </nav>
-      ${cambiosPendientes().length > 0 ? `<button class="btn-cambios-badge" id="btn-cambios-pend" title="${cambiosPendientes().length} solicitud(es) de cambio pendiente(s)">🔔<span class="cambios-count">${cambiosPendientes().length}</span></button>` : ''}
+${cambiosPendientes().length > 0 ? `<button class="btn-cambios-badge" id="btn-cambios-pend" title="${cambiosPendientes().length} solicitud(es) de cambio pendiente(s)">🔔<span class="cambios-count">${cambiosPendientes().length}</span></button>` : ''}
+      <div class="brand">
+        <strong>${escapeHtml(state.config.NOMBRE_HOTEL || 'Hotel')}</strong>
+        <span class="user">${escapeHtml(state.user?.email || '')}</span>
+      </div>
       <button class="logout" id="btn-logout">Salir</button>
     </header>
 
@@ -784,10 +785,11 @@ function renderOverview() {
   });
 
   main.innerHTML = `
-    <div class="cal-header" style="justify-content:space-between">
-      <h2>Vista general — ${meses[mes]} ${year}</h2>
+    <div class="cal-header" >
+     
       <div style="display:flex;gap:8px">
         <button class="nav-mes" id="prev-mes">‹</button>
+         <h2> ${meses[mes]} ${year}</h2>
         <button class="nav-mes" id="next-mes">›</button>
       </div>
     </div>
