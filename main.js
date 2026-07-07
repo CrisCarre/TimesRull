@@ -1142,7 +1142,7 @@ function renderModalDia(fecha, draft) {
     b.addEventListener('click', () => { draft.splice(parseInt(b.dataset.idx), 1); renderModalDia(fecha, draft); });
   });
   const sel = document.getElementById('sel-add-emp');
-  if (sel) {
+ 
     document.querySelectorAll('.add-emp-chip').forEach(chipEl => {
       chipEl.addEventListener('click', () => {
         const id = parseInt(chipEl.dataset.emp);
@@ -1154,7 +1154,7 @@ function renderModalDia(fecha, draft) {
         renderModalDia(fecha, draft);
       });
     });
-  }
+  
 }
 
 function cerrarModal() { document.getElementById('modal-root').innerHTML = ''; }
