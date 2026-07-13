@@ -683,6 +683,23 @@ main {
   font-size: 11px;
 }
 
+
+.bar-col.festivo .bar {
+  position: relative;
+}
+
+.bar-col.festivo .bar::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--p3);
+}
+
 .cal-day-cost-pill {
   border: 2px solid var(--border);
   border-radius: 5px;
@@ -906,7 +923,7 @@ main {
 .tabla-config {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .tabla-dia th,
