@@ -16,7 +16,7 @@ function renderResumenMes() {
 
   const diasM = new Date(year, mes + 1, 0).getDate();
   const dias = [];
-  const ritmoDiario = presupuesto > 0 ? presupuesto / diasM : 0;
+ 
   for (let d = 1; d <= diasM; d++) { const f = fechaISO(new Date(year, mes, d)); const t = totalDia(f); if (t) dias.push([f, t]); }
 
   const totalMes = dias.reduce((s, [, r]) => s + r.total, 0);
@@ -25,7 +25,7 @@ function renderResumenMes() {
   const presupuesto = presupuestoCtx();
   const empCtx = empleadosEnContexto();
   const outlet = ctxOutlet();
-
+  const ritmoDiario = presupuesto > 0 ? presupuesto / diasM : 0;
   // Per employee
   const porEmp = {};
   planificacionCtx().filter(a => a.fecha.startsWith(prefijo)).forEach(a => {
