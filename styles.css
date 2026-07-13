@@ -703,18 +703,25 @@ main {
   max-width: 900px;
 }
 
-.config-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
 
 .config-card {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px 16px;
+}
+
+.config-groups {
+  columns: 3 260px;
+  column-gap: 16px;
+  margin-top: 16px;
+}
+
+.config-card {
+  break-inside: avoid;
+  margin-bottom: 16px;
+  display: inline-block;
+  width: 100%;
 }
 
 .config-card h3 {

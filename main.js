@@ -280,6 +280,13 @@ async function cargarTodo() {
     procesarTurnos();
     document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#0f766e');
     document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
+    document.documentElement.style.setProperty('--p1', state.config.COLOR_P1 || '#122c30');
+    document.documentElement.style.setProperty('--p2', state.config.COLOR_P2 || '#146385');
+    document.documentElement.style.setProperty('--p3', state.config.COLOR_P3 || '#e39915');
+    document.documentElement.style.setProperty('--p4', state.config.COLOR_P4 || '#eccc5b');
+    document.documentElement.style.setProperty('--p5', state.config.COLOR_P5 || '#f6eda5');
+    document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#0f766e');
+    document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
 
     if (!state.cursorMes) { const h = new Date(); state.cursorMes = new Date(h.getFullYear(), h.getMonth(), 1); }
     if (!state.cursorSemana) { state.cursorSemana = lunesDe(new Date()); }
@@ -2557,11 +2564,20 @@ function renderConfigAplicacion(container) {
     ['Costes', ['PLUS_NOCTURNIDAD', 'PLUS_FESTIVO', 'COSTE_FIJO_DIARIO']],
     ['Avisos y descansos', ['DESCANSO_MIN_HORAS', 'MAX_DIAS_CONSECUTIVOS']],
     ['Presupuesto global', ['PRESUPUESTO_MENSUAL', 'ALERTA_PORCENTAJE']],
-    ['Apariencia', ['COLOR_PRIMARIO', 'COLOR_ALERTA']],
+    ['Apariencia', ['COLOR_P1', 'COLOR_P2', 'COLOR_P3', 'COLOR_P4', 'COLOR_P5', 'COLOR_PRIMARIO', 'COLOR_ALERTA']],
   ];
+
+  // Reparte cualquier otra clave existente: todo lo que contenga "TURNO" va a Turnos,
+  // todo lo que empiece por "KPI_" va a Hotel. Ya no queda sección "Otros".
+  const grupoHotel = grupos.find(g => g[0] === 'Hotel');
+  const grupoTurnos = grupos.find(g => g[0] === 'Turnos');
   const incluidas = new Set(grupos.flatMap(g => g[1]));
-  const otras = Object.keys(state.config).filter(k => !incluidas.has(k) && !k.startsWith('PRESUPUESTO_'));
-  if (otras.length) grupos.push(['Otros', otras]);
+  Object.keys(state.config).forEach(k => {
+    if (incluidas.has(k) || k.startsWith('PRESUPUESTO_')) return;
+    if (k.includes('TURNO')) grupoTurnos[1].push(k);
+    else if (k.startsWith('KPI_')) grupoHotel[1].push(k);
+    incluidas.add(k);
+  });
 
   main.innerHTML = `
     <div class="config-app-wrap">
@@ -2596,6 +2612,13 @@ function renderConfigAplicacion(container) {
       if (error) throw error;
       cambios.forEach(c => state.config[c.clave] = c.valor);
       procesarTurnos();
+      document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#146385');
+      document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
+      document.documentElement.style.setProperty('--p1', state.config.COLOR_P1 || '#122c30');
+      document.documentElement.style.setProperty('--p2', state.config.COLOR_P2 || '#146385');
+      document.documentElement.style.setProperty('--p3', state.config.COLOR_P3 || '#e39915');
+      document.documentElement.style.setProperty('--p4', state.config.COLOR_P4 || '#eccc5b');
+      document.documentElement.style.setProperty('--p5', state.config.COLOR_P5 || '#f6eda5');
       document.documentElement.style.setProperty('--color-primario', state.config.COLOR_PRIMARIO || '#146385');
       document.documentElement.style.setProperty('--color-alerta', state.config.COLOR_ALERTA || '#dc2626');
       render(); toast(`${cambios.length} cambio(s) guardado(s)`, 'success');
