@@ -683,7 +683,6 @@ main {
   font-size: 11px;
 }
 
-
 .bar-col.festivo .bar {
   position: relative;
 }
@@ -698,6 +697,52 @@ main {
   height: 6px;
   border-radius: 50%;
   background: var(--p3);
+}
+
+.config-app-wrap {
+  max-width: 900px;
+}
+
+.config-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.config-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.config-card h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+
+.config-card-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.config-field input {
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .cal-day-cost-pill {

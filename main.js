@@ -1142,7 +1142,7 @@ function renderModalDia(fecha, draft) {
     b.addEventListener('click', () => { draft.splice(parseInt(b.dataset.idx), 1); renderModalDia(fecha, draft); });
   });
   const sel = document.getElementById('sel-add-emp');
- 
+  
     document.querySelectorAll('.add-emp-chip').forEach(chipEl => {
       chipEl.addEventListener('click', () => {
         const id = parseInt(chipEl.dataset.emp);
@@ -1805,15 +1805,18 @@ function renderResumenMes() {
         <div>${(totalMes / presupuesto * 100).toFixed(1)}% consumido</div>
       </div>`: ''}
     ${outlet ? renderKPIBlock(outlet.id, prefijo) : ''}
-    <h3>Coste diario</h3>
+  <h3>Coste diario</h3>
     <div class="grafica-dias">
       ${dias.length === 0 ? '<div class="empty-state" style="width:100%">Sin datos</div>' :
       (() => {
         const mx = Math.max(...dias.map(([, r]) => r.total));
+        const ritmoDiario = presupuesto > 0 ? presupuesto / diasM : 0;
         return dias.map(([f, r]) => {
           const fobj = parseISO(f); const h = mx > 0 ? (r.total / mx * 100) : 0;
-          return `<div class="bar-col" title="${f} – ${divisa(r.total)}">
-              <div class="bar" style="height:${h}%;background:${state.festivos[f] ? 'var(--color-alerta)' : 'var(--color-primario)'}"></div>
+          const esFestivo = !!state.festivos[f];
+          const sobrePresupuesto = ritmoDiario > 0 && r.total > ritmoDiario;
+          return `<div class="bar-col ${esFestivo ? 'festivo' : ''}" title="${f}${esFestivo ? ` – ${state.festivos[f]}` : ''} – ${divisa(r.total)}">
+              <div class="bar" style="height:${h}%;background:${sobrePresupuesto ? 'var(--color-alerta)' : 'var(--color-primario)'}"></div>
               <span class="bar-label">${fobj.getDate()}</span>
             </div>`;
         }).join('');
@@ -2561,17 +2564,24 @@ function renderConfigAplicacion(container) {
   if (otras.length) grupos.push(['Otros', otras]);
 
   main.innerHTML = `
-    <div class="seccion-header"><h2>Configuración de aplicación</h2></div>
-    ${grupos.map(([titulo, claves]) => `
-      <h3 style="margin-top:20px">${titulo}</h3>
-      <table class="tabla-config">
-        ${claves.map(k => `<tr>
-          <td style="width:40%"><code>${escapeHtml(k)}</code></td>
-          <td><input type="text" data-clave="${k}" value="${escapeHtml(state.config[k] || '')}"></td>
-        </tr>`).join('')}
-      </table>`).join('')}
-    <div style="margin-top:20px;display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn-pri" id="btn-guardar-cfg">Guardar configuración</button>
+    <div class="config-app-wrap">
+      <div class="seccion-header"><h2>Configuración de aplicación</h2></div>
+      <div class="config-groups">
+        ${grupos.map(([titulo, claves]) => `
+          <div class="config-card">
+            <h3>${titulo}</h3>
+            <div class="config-card-grid">
+              ${claves.map(k => `
+                <label class="config-field">
+                  <span>${escapeHtml(k)}</span>
+                  <input type="text" data-clave="${k}" value="${escapeHtml(state.config[k] || '')}">
+                </label>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:20px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-pri" id="btn-guardar-cfg">Guardar configuración</button>
+      </div>
     </div>`;
 
   document.getElementById('btn-guardar-cfg').addEventListener('click', async () => {
