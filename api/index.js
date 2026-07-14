@@ -45,6 +45,10 @@ function validarIdentificadores(obj) {
   }
 }
 
+function prepararValor(v) {
+  return (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+}
+
 function verificarToken(req) {
   const auth = req.headers['authorization'] || '';
   const m = auth.match(/^Bearer (.+)$/);
@@ -199,9 +203,7 @@ module.exports = async (req, res) => {
         effectiveWhere = { ...effectiveWhere, empleado_id: auth.empleado_id };
       }
 
-      function prepararValor(v) {
-        return (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
-      }
+     
       validarIdentificadores(effectiveWhere);
       const conds = Object.entries(effectiveWhere);
       const query = `DELETE FROM ${table} WHERE ${conds.map(([k], i) => `${k}=$${i + 1}`).join(' AND ')}`;

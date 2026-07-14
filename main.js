@@ -2608,22 +2608,34 @@ function renderConfigAplicacion(container) {
     else if (k.startsWith('KPI_')) grupoHotel[1].push(k);
     incluidas.add(k);
   });
+  // Reparte los grupos en 3 columnas equilibrando por nº de campos (altura aproximada)
+  const NUM_COLS = 3;
+  const columnas = Array.from({ length: NUM_COLS }, () => []);
+  const colAltura = Array(NUM_COLS).fill(0);
+  grupos.forEach(([titulo, claves]) => {
+    let idx = 0;
+    for (let i = 1; i < NUM_COLS; i++) if (colAltura[i] < colAltura[idx]) idx = i;
+    columnas[idx].push([titulo, claves]);
+    colAltura[idx] += claves.length + 1.5; // +1.5 por el título de la tarjeta
+  });
+
+  const renderCard = ([titulo, claves]) => `
+    <div class="config-card">
+      <h3>${titulo}</h3>
+      <div class="config-card-grid">
+        ${claves.map(k => `
+          <label class="config-field">
+            <span>${escapeHtml(labelConfigKey(k))}</span>
+            <input type="text" data-clave="${k}" value="${escapeHtml(state.config[k] || '')}">
+          </label>`).join('')}
+      </div>
+    </div>`;
 
   main.innerHTML = `
     <div class="config-app-wrap">
       <div class="seccion-header"><h2>Configuración de aplicación</h2></div>
       <div class="config-groups">
-        ${grupos.map(([titulo, claves]) => `
-          <div class="config-card">
-            <h3>${titulo}</h3>
-            <div class="config-card-grid">
-              ${claves.map(k => `
-                <label class="config-field">
-               <span>${escapeHtml(labelConfigKey(k))}</span>
-                  <input type="text" data-clave="${k}" value="${escapeHtml(state.config[k] || '')}">
-                </label>`).join('')}
-            </div>
-          </div>`).join('')}
+        ${columnas.map(col => `<div class="config-column">${col.map(renderCard).join('')}</div>`).join('')}
       </div>
       <div style="margin-top:20px;display:flex;gap:8px;justify-content:flex-end">
         <button class="btn-pri" id="btn-guardar-cfg">Guardar configuración</button>
