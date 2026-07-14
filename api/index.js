@@ -153,7 +153,7 @@ module.exports = async (req, res) => {
       for (const row of rows) {
         validarIdentificadores(row);
         const keys = Object.keys(row);
-        const vals = Object.values(row);
+        const vals = Object.values(row).map(prepararValor);
         const placeholders = keys.map((_, i) => `$${i + 1}`);
         const query = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const result = await client.query(query, vals);
@@ -171,7 +171,7 @@ module.exports = async (req, res) => {
       if (esEmpleado && table === 'cambios_turno') { delete fields.estado; delete fields.empleado_id; }
       validarIdentificadores(fields);
       const keys = Object.keys(fields);
-      const vals = Object.values(fields);
+      const vals = Object.values(fields).map(prepararValor);
       const sets = keys.map((k, i) => `${k}=$${i + 1}`);
       vals.push(id);
       let query = `UPDATE ${table} SET ${sets.join(',')} WHERE id=$${vals.length}`;
@@ -197,6 +197,10 @@ module.exports = async (req, res) => {
 
       if (esEmpleado && TABLAS_EMPLEADO_ESCRITURA.has(table)) {
         effectiveWhere = { ...effectiveWhere, empleado_id: auth.empleado_id };
+      }
+
+      function prepararValor(v) {
+        return (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
       }
       validarIdentificadores(effectiveWhere);
       const conds = Object.entries(effectiveWhere);
