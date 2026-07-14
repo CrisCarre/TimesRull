@@ -2556,6 +2556,36 @@ function renderConfig() {
   else if (subview === 'reglas') { content2.innerHTML = ''; renderReglas(content2); }
 }
 
+function labelConfigKey(k) {
+  const LABELS = {
+    NOMBRE_HOTEL: 'Nombre del hotel',
+    DIVISA: 'Divisa',
+    TURNOS: 'Turnos activos (códigos separados por |)',
+    TURNO_M_NOMBRE: 'Turno M · Nombre', TURNO_M_HORAS: 'Turno M · Horas', TURNO_M_COLOR: 'Turno M · Color',
+    TURNO_M_INICIO: 'Turno M · Hora inicio', TURNO_M_FIN: 'Turno M · Hora fin',
+    TURNO_T_NOMBRE: 'Turno T · Nombre', TURNO_T_HORAS: 'Turno T · Horas', TURNO_T_COLOR: 'Turno T · Color',
+    TURNO_T_INICIO: 'Turno T · Hora inicio', TURNO_T_FIN: 'Turno T · Hora fin',
+    TURNO_N_NOMBRE: 'Turno N · Nombre', TURNO_N_HORAS: 'Turno N · Horas', TURNO_N_COLOR: 'Turno N · Color',
+    TURNO_N_INICIO: 'Turno N · Hora inicio', TURNO_N_FIN: 'Turno N · Hora fin',
+    PLUS_NOCTURNIDAD: 'Plus nocturnidad (%)', PLUS_FESTIVO: 'Plus festivo (%)', COSTE_FIJO_DIARIO: 'Coste fijo diario',
+    DESCANSO_MIN_HORAS: 'Descanso mínimo (horas)', MAX_DIAS_CONSECUTIVOS: 'Máx. días consecutivos',
+    PRESUPUESTO_MENSUAL: 'Presupuesto mensual global', ALERTA_PORCENTAJE: '% para alerta de presupuesto',
+    COLOR_P1: 'Color base 1 (fondo oscuro)', COLOR_P2: 'Color base 2 (azul medio)', COLOR_P3: 'Color base 3 (dorado)',
+    COLOR_P4: 'Color base 4 (amarillo)', COLOR_P5: 'Color base 5 (crema)',
+    COLOR_PRIMARIO: 'Color primario (botones, topbar)', COLOR_ALERTA: 'Color de alerta (errores)',
+  };
+  if (LABELS[k]) return LABELS[k];
+  const mKpi = k.match(/^KPI_(REVENUE|FOH_PCT|BOH_PCT)_(\d+)$/);
+  if (mKpi) {
+    const [, tipo, outletId] = mKpi;
+    const outlet = state.outlets.find(o => o.id === parseInt(outletId));
+    const nombreOutlet = outlet ? outlet.nombre : `Local #${outletId}`;
+    const tipoLabel = tipo === 'REVENUE' ? 'Revenue mensual' : tipo === 'FOH_PCT' ? 'Objetivo FOH (%)' : 'Objetivo BOH (%)';
+    return `${tipoLabel} · ${nombreOutlet}`;
+  }
+  return k;
+}
+
 function renderConfigAplicacion(container) {
   const main = container || document.getElementById('main');
   const grupos = [
@@ -2589,7 +2619,7 @@ function renderConfigAplicacion(container) {
             <div class="config-card-grid">
               ${claves.map(k => `
                 <label class="config-field">
-                  <span>${escapeHtml(k)}</span>
+               <span>${escapeHtml(labelConfigKey(k))}</span>
                   <input type="text" data-clave="${k}" value="${escapeHtml(state.config[k] || '')}">
                 </label>`).join('')}
             </div>
