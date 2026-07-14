@@ -712,16 +712,26 @@ main {
 }
 
 .config-groups {
-  columns: 3 260px;
-  column-gap: 16px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
   margin-top: 16px;
 }
 
-.config-card {
-  break-inside: avoid;
-  margin-bottom: 16px;
-  display: inline-block;
-  width: 100%;
+.config-column {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+
+
+@media (max-width: 900px) {
+  .config-groups {
+    flex-direction: column;
+  }
 }
 
 .config-card h3 {
@@ -2614,6 +2624,7 @@ main {
 }
 
 #config-content {
+  background: #54939e;
   padding: 20px 24px;
 }
 
