@@ -1426,6 +1426,7 @@ main {
   margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 8px;
+  color: white;
 }
 
 .seccion-header h2 {
