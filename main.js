@@ -679,9 +679,9 @@ function renderDisponibilidadEmpleado() {
       <h2 style="margin-bottom:16px">Mi disponibilidad</h2>
       <button class="btn-pri" id="btn-nueva-disp" style="margin-bottom:20px">+ Nueva solicitud</button>
       ${misDisp.length === 0 ? '<div class="empty-state">Sin solicitudes registradas</div>' : `
-        <div class="cards-grid">
+           <div class="disp-list">
           ${misDisp.map(d => `
-            <div class="card" style="padding:14px">
+            <div class="disp-item">
               <div style="font-weight:600;margin-bottom:4px">${tipoDispLabel(d.tipo)}</div>
               <div style="font-size:13px;color:var(--muted)">${fmtFecha(d.fecha_inicio)} → ${fmtFecha(d.fecha_fin)}</div>
               ${d.nota ? `<div style="font-size:12px;margin-top:6px;color:var(--muted)">${escapeHtml(d.nota)}</div>` : ''}
@@ -696,7 +696,7 @@ function renderDisponibilidadEmpleado() {
 
   document.getElementById('btn-nueva-disp').addEventListener('click', () => {
     document.getElementById('modal-root').innerHTML = `
-      <div class="modal-overlay">
+     <div class="modal-backdrop">
         <div class="modal">
           <h3>Nueva solicitud</h3>
           <label>Tipo</label>
